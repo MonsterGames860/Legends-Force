@@ -12,6 +12,12 @@
 <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-storage-compat.js"></script>
 
+<!-- CodeMirror (event script editor in the Mod Workspace) -->
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/codemirror.min.css">
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/theme/dracula.min.css">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/codemirror.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/mode/javascript/javascript.min.js"></script>
+
 <style>
 /* ============================================================
    LEGENDSFORCE — DESIGN TOKENS
@@ -655,46 +661,148 @@ a:focus-visible, button:focus-visible, input:focus-visible, textarea:focus-visib
 .lf-checkbox-row label{ margin:0; text-transform:none; letter-spacing:0; font-weight:500; font-size:13.5px; color:var(--text-secondary); }
 
 /* ============================================================
-   MOD EDITOR (MCreator-style, inside wide modal)
+   MOD WORKSPACE (MCreator-style fullscreen editor)
    ============================================================ */
-.lf-editor-layout{ display:grid; grid-template-columns: 260px 1fr; min-height:520px; }
-@media (max-width:760px){ .lf-editor-layout{ grid-template-columns:1fr; } }
+.lf-workspace{
+  position:fixed; inset:0; z-index:1500;
+  background: var(--bg-void);
+  display:none; flex-direction:column;
+  opacity:0; transition: opacity .16s ease;
+}
+.lf-workspace.open{ display:flex; opacity:1; }
 
-.lf-editor-sidebar{
-  border-right:1px solid var(--border-soft);
-  padding:18px 14px;
+.lf-ws-topbar{
+  display:flex; align-items:center; justify-content:space-between;
+  gap:16px; padding:10px 16px;
+  background: var(--bg-panel); border-bottom:1px solid var(--border-soft);
+  flex-shrink:0; flex-wrap:wrap;
 }
-.lf-editor-step{
-  display:flex; align-items:center; gap:10px;
-  padding:11px 12px; border-radius: var(--radius-md);
-  font-size:13px; font-weight:700; color: var(--text-tertiary);
-  margin-bottom:4px;
-}
-.lf-editor-step .num{
-  width:22px; height:22px; border-radius:50%;
-  background: var(--bg-deep); border:1px solid var(--border-soft);
+.lf-ws-topbar-left{ display:flex; align-items:center; gap:14px; min-width:0; flex:1; }
+.lf-ws-icon-btn{
+  width:34px; height:34px; border-radius:8px; flex-shrink:0;
+  background: rgba(255,255,255,0.04); border:1px solid var(--border-soft);
+  color: var(--text-secondary); font-size:16px;
   display:flex; align-items:center; justify-content:center;
-  font-size:11px; flex-shrink:0;
 }
-.lf-editor-step.active{ color:#fff; background: rgba(0,242,254,0.08); }
-.lf-editor-step.active .num{ background: var(--lens-cyan); color:#001521; border-color: var(--lens-cyan); }
-.lf-editor-step.done .num{ background: var(--ok); color:#00291a; border-color: var(--ok); }
-.lf-editor-step.done{ color: var(--text-secondary); }
-
-.lf-editor-main{ padding:22px; }
-.lf-editor-panel{ display:none; }
-.lf-editor-panel.active{ display:block; }
-
-.lf-type-grid{ display:grid; grid-template-columns:repeat(3,1fr); gap:10px; margin-bottom:6px; }
-.lf-type-card{
-  padding:16px 10px; text-align:center;
-  border-radius: var(--radius-md); border:1px solid var(--border-soft);
-  background: var(--bg-deep); cursor:pointer; transition: all .15s ease;
+.lf-ws-icon-btn:hover{ background: rgba(255,255,255,0.08); color:#fff; }
+.lf-ws-project{ display:flex; flex-direction:column; gap:2px; min-width:0; }
+.lf-ws-project-name{
+  background:transparent; border:none; color:#fff; font-family:var(--font-display);
+  font-size:16px; font-weight:700; padding:2px 4px; border-radius:5px; min-width:120px;
 }
-.lf-type-card .ic{ font-size:24px; margin-bottom:6px; }
-.lf-type-card .name{ font-size:12.5px; font-weight:700; color: var(--text-primary); }
-.lf-type-card:hover{ border-color: var(--border-glow); }
-.lf-type-card.selected{ border-color: var(--lens-cyan); background: rgba(0,242,254,0.06); box-shadow:0 0 0 1px var(--lens-cyan); }
+.lf-ws-project-name:focus{ outline:none; background: rgba(255,255,255,0.05); }
+.lf-ws-namespace{
+  background:transparent; border:none; color: var(--text-tertiary); font-family:var(--font-mono);
+  font-size:11.5px; padding:1px 4px; border-radius:4px; width:140px;
+}
+.lf-ws-namespace:focus{ outline:none; background: rgba(255,255,255,0.05); color: var(--lens-cyan); }
+.lf-ws-topbar-right{ display:flex; align-items:center; gap:10px; flex-shrink:0; }
+.lf-ws-savestate{ font-size:11.5px; color: var(--text-tertiary); white-space:nowrap; }
+
+.lf-ws-body{ flex:1; display:flex; min-height:0; }
+
+.lf-ws-sidebar{
+  width:280px; flex-shrink:0; overflow-y:auto;
+  border-right:1px solid var(--border-soft);
+  background: var(--bg-panel);
+  padding:14px;
+}
+@media (max-width:820px){ .lf-ws-sidebar{ width:220px; } }
+
+.lf-ws-addrow{ margin-bottom:14px; position:relative; }
+.lf-ws-add-dropdown{ position:relative; }
+.lf-ws-add-menu{
+  display:none; position:absolute; top:calc(100% + 6px); left:0; right:0; z-index:20;
+  background: var(--bg-elevated); border:1px solid var(--border-glow); border-radius: var(--radius-md);
+  box-shadow: var(--shadow-panel); overflow:hidden;
+}
+.lf-ws-add-menu.open{ display:block; }
+.lf-ws-add-menu button{
+  display:flex; align-items:center; gap:10px; width:100%;
+  padding:10px 12px; background:transparent; border:none;
+  color: var(--text-primary); font-size:13px; font-weight:600; text-align:left;
+}
+.lf-ws-add-menu button:hover{ background: rgba(0,242,254,0.08); }
+.lf-ws-add-menu .ic{ font-size:15px; }
+
+.lf-ws-groups{ display:flex; flex-direction:column; gap:14px; }
+.lf-ws-group-label{
+  font-size:10.5px; font-weight:800; letter-spacing:0.06em; text-transform:uppercase;
+  color: var(--text-tertiary); padding:0 6px 6px;
+  display:flex; align-items:center; gap:6px;
+}
+.lf-ws-group-label .count{ color: var(--text-disabled); font-weight:600; }
+.lf-ws-entry-item{
+  display:flex; align-items:center; gap:9px;
+  padding:9px 10px; border-radius: var(--radius-md);
+  font-size:13px; color: var(--text-secondary); cursor:pointer;
+  margin-bottom:2px; transition: background .12s ease, color .12s ease;
+}
+.lf-ws-entry-item:hover{ background: rgba(255,255,255,0.04); color:#fff; }
+.lf-ws-entry-item.selected{ background: rgba(0,242,254,0.1); color:#fff; box-shadow: inset 2px 0 0 var(--lens-cyan); }
+.lf-ws-entry-item .ic{ width:20px; text-align:center; flex-shrink:0; font-size:14px; }
+.lf-ws-entry-item .nm{ flex:1; min-width:0; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+.lf-ws-entry-item .dot{ width:6px; height:6px; border-radius:50%; background: var(--warn); flex-shrink:0; opacity:0; }
+.lf-ws-entry-item.unsaved .dot{ opacity:1; }
+
+.lf-ws-empty{ text-align:center; padding:40px 16px; color: var(--text-tertiary); }
+.lf-ws-empty .ic{ font-size:30px; margin-bottom:10px; opacity:0.5; }
+.lf-ws-empty p{ font-size:12.5px; line-height:1.6; }
+
+.lf-ws-main{ flex:1; min-width:0; overflow-y:auto; padding:28px 32px; position:relative; }
+@media (max-width:640px){ .lf-ws-main{ padding:18px; } }
+
+.lf-ws-welcome{ max-width:420px; margin:60px auto; text-align:center; color: var(--text-tertiary); }
+.lf-ws-welcome .ic{ font-size:44px; margin-bottom:14px; filter: drop-shadow(0 0 14px rgba(0,242,254,0.3)); }
+.lf-ws-welcome h3{ font-family: var(--font-display); color:#fff; font-size:19px; margin-bottom:10px; }
+.lf-ws-welcome p{ font-size:13.5px; line-height:1.7; }
+
+.lf-ws-form-grid{ display:grid; grid-template-columns:1fr 1fr; gap:28px; }
+@media (max-width:900px){ .lf-ws-form-grid{ grid-template-columns:1fr; } }
+.lf-ws-form-col{ min-width:0; }
+
+.lf-ws-recipe-header{ display:flex; align-items:center; justify-content:space-between; margin-bottom:8px; }
+.lf-recipe-builder{ display:flex; align-items:center; gap:16px; flex-wrap:wrap; }
+.lf-recipe-grid{ display:grid; grid-template-columns:repeat(3,40px); grid-template-rows:repeat(3,40px); gap:5px; }
+.lf-recipe-cell{
+  width:40px; height:40px; border-radius:6px;
+  background: var(--bg-deep); border:1px solid var(--border-soft);
+  display:flex; align-items:center; justify-content:center; position:relative;
+}
+.lf-recipe-cell input{
+  position:absolute; inset:0; width:100%; height:100%; opacity:0;
+}
+.lf-recipe-cell .label{
+  font-size:8px; color: var(--text-disabled); text-align:center; padding:2px;
+  pointer-events:none; word-break:break-all; line-height:1.15;
+}
+.lf-recipe-cell.filled{ border-color: var(--lens-cyan); background: rgba(0,242,254,0.06); }
+.lf-recipe-cell.filled .label{ color: var(--lens-cyan); font-weight:700; }
+.lf-recipe-arrow{ font-size:20px; color: var(--text-tertiary); }
+.lf-recipe-output{ display:flex; flex-direction:column; align-items:center; }
+.lf-recipe-output .lf-recipe-cell{ width:48px; height:48px; cursor:default; }
+.lf-recipe-output img{ width:100%; height:100%; object-fit:cover; image-rendering:pixelated; border-radius:5px; }
+.lf-input-sm{ padding:6px 8px; font-size:12px; text-align:center; }
+
+.lf-ws-script-toolbar{ display:flex; align-items:center; gap:10px; flex-wrap:wrap; }
+.lf-ws-code-wrap{
+  margin-top:14px; flex:1; min-height:320px;
+  border:1px solid var(--border-soft); border-radius: var(--radius-md);
+  overflow:hidden; background:#0a0e18;
+}
+.lf-ws-code-wrap .CodeMirror{ height:100%; font-family: var(--font-mono); font-size:13px; }
+
+.lf-ws-entry-footer{
+  display:flex; align-items:center; margin-top:26px; padding-top:18px;
+  border-top:1px solid var(--border-soft);
+}
+.lf-ws-entry-savestate{ font-size:11.5px; color: var(--text-tertiary); }
+
+.lf-btn-danger{
+  background: rgba(255,93,122,0.1); color: var(--danger);
+  border-color: rgba(255,93,122,0.3);
+}
+.lf-btn-danger:hover{ background: rgba(255,93,122,0.18); }
 
 /* Texture upload dropzone */
 .lf-dropzone{
@@ -1017,148 +1125,266 @@ a:focus-visible, button:focus-visible, input:focus-visible, textarea:focus-visib
 
 </body>
 <!-- ============================================================
-     CREATE / EDIT MOD MODAL — multistep editor
+     MOD WORKSPACE — MCreator-style fullscreen editor
+     Multi-entry project: blocks, items, entities, event scripts
+     all live inside one mod project, listed in the left sidebar.
      ============================================================ -->
-<div class="lf-overlay" id="editorOverlay">
-  <div class="lf-modal lf-modal-wide">
-    <div class="lf-modal-header">
-      <h2 id="editorModalTitle">Create Mod Item</h2>
-      <button class="lf-modal-close" id="editorCloseBtn">✕</button>
-    </div>
+<div class="lf-workspace" id="workspaceOverlay">
 
-    <div class="lf-editor-layout">
-      <aside class="lf-editor-sidebar">
-        <div class="lf-editor-step active" data-step="1"><span class="num">1</span> Basics</div>
-        <div class="lf-editor-step" data-step="2"><span class="num">2</span> Type &amp; ID</div>
-        <div class="lf-editor-step" data-step="3"><span class="num">3</span> Texture</div>
-        <div class="lf-editor-step" data-step="4"><span class="num">4</span> Preview</div>
-        <div class="lf-editor-step" data-step="5"><span class="num">5</span> Review &amp; Save</div>
-      </aside>
-
-      <div class="lf-editor-main">
-
-        <!-- STEP 1 — Basics -->
-        <div class="lf-editor-panel active" data-panel="1">
-          <div class="lf-field">
-            <label>Mod Name</label>
-            <input class="lf-input" id="modName" type="text" placeholder="e.g. Sapphire Tools">
-            <div class="hint">The name of your overall mod project (can contain multiple items later).</div>
-          </div>
-          <div class="lf-field">
-            <label>Namespace (mod ID prefix)</label>
-            <input class="lf-input" id="modNamespace" type="text" placeholder="e.g. mod, legends, sapphire">
-            <div class="hint">Your own short prefix — not required to be "legends". This becomes the part before the colon, e.g. <code>mod:kilic</code>.</div>
-          </div>
-          <div class="lf-field">
-            <label>Item / Block Display Name</label>
-            <input class="lf-input" id="entryDisplayName" type="text" placeholder="e.g. Mavi Blok">
-          </div>
-          <div class="lf-field">
-            <label>Short Description</label>
-            <textarea class="lf-textarea" id="entryShortDesc" placeholder="One or two sentences describing this item/block…" rows="3"></textarea>
-          </div>
-        </div>
-
-        <!-- STEP 2 — Type & System ID -->
-        <div class="lf-editor-panel" data-panel="2">
-          <div class="lf-field">
-            <label>Entry Type</label>
-            <div class="lf-type-grid" id="typeGrid">
-              <div class="lf-type-card selected" data-type="item"><div class="ic">⚔️</div><div class="name">Item</div></div>
-              <div class="lf-type-card" data-type="block"><div class="ic">🧱</div><div class="name">Block</div></div>
-              <div class="lf-type-card" data-type="mob"><div class="ic">👾</div><div class="name">Mob</div></div>
-            </div>
-          </div>
-
-          <div class="lf-field">
-            <label>System / Command ID</label>
-            <div class="hint" style="margin-bottom:8px;">Auto-generated from your namespace + display name — lowercased, special characters stripped, spaces become underscores. This is the ID used with <code>/give</code>.</div>
-            <div class="lf-id-preview">
-              <span class="label">/give @s</span>
-              <span class="code" id="systemIdPreview">namespace:item_id</span>
-            </div>
-          </div>
-
-          <div class="lf-field">
-            <label>Category</label>
-            <select class="lf-select" id="entryCategory">
-              <option value="items">Items</option>
-              <option value="blocks">Blocks</option>
-              <option value="mobs">Mobs</option>
-              <option value="other">Other</option>
-            </select>
-          </div>
-        </div>
-
-        <!-- STEP 3 — Texture -->
-        <div class="lf-editor-panel" data-panel="3">
-          <div class="lf-field">
-            <label>Texture Source</label>
-            <div class="lf-radio-cards" id="textureModeCards">
-              <label class="lf-radio-card checked" data-mode="upload">
-                <input type="radio" name="textureMode" value="upload" checked>
-                <div class="title">🖼️ Upload New</div>
-                <div class="desc">Upload your own texture image</div>
-              </label>
-              <label class="lf-radio-card" data-mode="override">
-                <input type="radio" name="textureMode" value="override">
-                <div class="title">♻️ Override Vanilla</div>
-                <div class="desc">Reskin an existing block/item</div>
-              </label>
-            </div>
-          </div>
-
-          <div id="uploadModePanel">
-            <div class="lf-dropzone" id="textureDropzone">
-              <input type="file" id="textureFileInput" accept="image/png,image/jpeg,image/webp" style="display:none;">
-              <div id="dropzoneEmpty">
-                <div class="ic">📤</div>
-                <div class="txt">Click or drag a texture image here</div>
-                <div class="sub">PNG recommended · 16×16 or 32×32 · max 1MB</div>
-              </div>
-              <div id="dropzoneFilled" style="display:none;">
-                <div class="lf-texture-preview"><img id="texturePreviewImg" src="" alt=""></div>
-                <div class="txt" id="textureFileName">texture.png</div>
-                <button type="button" class="lf-btn lf-btn-ghost lf-btn-sm" id="textureRemoveBtn" style="margin-top:10px;">Remove</button>
-              </div>
-            </div>
-          </div>
-
-          <div id="overrideModePanel" style="display:none;">
-            <div class="lf-field">
-              <label>Search vanilla blocks/items</label>
-              <input class="lf-input" id="overrideSearch" type="text" placeholder="Search…">
-            </div>
-            <div class="lf-override-list" id="overrideList"><!-- populated by JS --></div>
-          </div>
-        </div>
-
-        <!-- STEP 4 — Preview -->
-        <div class="lf-editor-panel" data-panel="4">
-          <label style="display:block; font-size:12.5px; font-weight:700; color:var(--text-secondary); margin-bottom:14px; text-transform:uppercase; letter-spacing:0.03em;">In-Hand Preview</label>
-          <div class="lf-preview-stage">
-            <div class="grid-floor"></div>
-            <img class="held-item" id="heldItemPreview" src="" alt="">
-          </div>
-          <div class="lf-preview-caption">Simulated preview of how this item looks held in-game. Actual in-game rendering may vary slightly.</div>
-        </div>
-
-        <!-- STEP 5 — Review -->
-        <div class="lf-editor-panel" data-panel="5">
-          <div class="lf-summary-block" id="reviewSummary"><!-- populated by JS --></div>
-          <label style="display:block; font-size:12.5px; font-weight:700; color:var(--text-secondary); margin-bottom:8px; text-transform:uppercase; letter-spacing:0.03em;">.lens Preview</label>
-          <div class="lf-code-block" id="lensCodePreview"></div>
-        </div>
-
+  <!-- Top bar -->
+  <div class="lf-ws-topbar">
+    <div class="lf-ws-topbar-left">
+      <button class="lf-ws-icon-btn" id="wsCloseBtn" title="Close editor">✕</button>
+      <div class="lf-ws-project">
+        <input class="lf-ws-project-name" id="wsModName" type="text" placeholder="Untitled Mod" spellcheck="false">
+        <input class="lf-ws-namespace" id="wsNamespace" type="text" placeholder="namespace" spellcheck="false" maxlength="24">
       </div>
     </div>
-
-    <div class="lf-modal-footer">
-      <button class="lf-btn lf-btn-ghost" id="editorBackBtn" style="display:none;">← Back</button>
-      <div style="flex:1;"></div>
-      <button class="lf-btn lf-btn-ghost" id="editorSaveDraftBtn">Save as Draft</button>
-      <button class="lf-btn lf-btn-primary" id="editorNextBtn">Next →</button>
+    <div class="lf-ws-topbar-right">
+      <span class="lf-ws-savestate" id="wsSaveState">All changes saved</span>
+      <button class="lf-btn lf-btn-ghost lf-btn-sm" id="wsSaveDraftBtn">💾 Save Draft</button>
+      <button class="lf-btn lf-btn-primary lf-btn-sm" id="wsExportBtn">⬇ Export .lens</button>
+      <button class="lf-btn lf-btn-primary lf-btn-sm" id="wsPublishBtn">🚀 Publish</button>
     </div>
+  </div>
+
+  <div class="lf-ws-body">
+    <!-- Sidebar: entry categories + list -->
+    <aside class="lf-ws-sidebar">
+      <div class="lf-ws-addrow">
+        <div class="lf-ws-add-dropdown" id="wsAddDropdown">
+          <button class="lf-btn lf-btn-primary lf-btn-sm" id="wsAddBtn" style="width:100%;">+ New Entry</button>
+          <div class="lf-ws-add-menu" id="wsAddMenu">
+            <button data-type="block"><span class="ic">🧱</span> Block</button>
+            <button data-type="item"><span class="ic">⚔️</span> Item</button>
+            <button data-type="entity"><span class="ic">👾</span> Entity</button>
+            <button data-type="script"><span class="ic">📜</span> Event Script</button>
+          </div>
+        </div>
+      </div>
+
+      <div class="lf-ws-groups" id="wsGroups"><!-- populated by JS --></div>
+
+      <div class="lf-ws-empty" id="wsSidebarEmpty">
+        <div class="ic">📦</div>
+        <p>No entries yet.<br>Click "+ New Entry" to start building.</p>
+      </div>
+    </aside>
+
+    <!-- Main: selected entry editor -->
+    <main class="lf-ws-main" id="wsMain">
+      <div class="lf-ws-welcome" id="wsWelcome">
+        <div class="ic">🔷</div>
+        <h3>Welcome to the Mod Workspace</h3>
+        <p>Create blocks, items, entities, and event scripts — all inside one mod project. Select an entry on the left, or add a new one to get started.</p>
+      </div>
+
+      <!-- BLOCK / ITEM editor template -->
+      <div class="lf-ws-editform" id="wsFormBlockItem" style="display:none;">
+        <div class="lf-ws-form-grid">
+          <div class="lf-ws-form-col">
+            <div class="lf-field">
+              <label>Display Name</label>
+              <input class="lf-input" id="fEntryName" type="text" placeholder="e.g. Sapphire Ore">
+            </div>
+            <div class="lf-field">
+              <label>System ID</label>
+              <div class="lf-id-preview">
+                <span class="label" id="fIdKind">block:</span>
+                <span class="code" id="fIdPreview">namespace:entry_id</span>
+              </div>
+            </div>
+            <div class="lf-field">
+              <label>Description</label>
+              <textarea class="lf-textarea" id="fEntryDesc" placeholder="One or two sentences describing this entry…" rows="3"></textarea>
+            </div>
+            <div class="lf-field">
+              <label>Category</label>
+              <select class="lf-select" id="fEntryCategory">
+                <option value="items">Items</option>
+                <option value="blocks">Blocks</option>
+                <option value="other">Other</option>
+              </select>
+            </div>
+
+            <div class="lf-field" id="fBlockOnlyFields">
+              <label>Hardness</label>
+              <input class="lf-input" id="fHardness" type="number" step="0.1" min="0" placeholder="e.g. 1.5">
+              <div class="hint">Higher = takes longer to break. Vanilla stone is ~1.5.</div>
+            </div>
+            <div class="lf-field" id="fBlockDropField">
+              <label>Drops When Broken</label>
+              <div class="lf-radio-cards" style="grid-template-columns:1fr 1fr;">
+                <label class="lf-radio-card" data-dropmode="self">
+                  <input type="radio" name="fDropMode" value="self">
+                  <div class="title">📦 Itself</div>
+                  <div class="desc">Drops this block as an item</div>
+                </label>
+                <label class="lf-radio-card" data-dropmode="custom">
+                  <input type="radio" name="fDropMode" value="custom">
+                  <div class="title">🎁 Custom Item</div>
+                  <div class="desc">Drops a different item</div>
+                </label>
+              </div>
+              <input class="lf-input" id="fDropCustomId" type="text" placeholder="e.g. mod:sapphire_gem" style="margin-top:8px; display:none;">
+            </div>
+
+            <div class="lf-field" id="fItemOnlyFields">
+              <label>Durability</label>
+              <input class="lf-input" id="fDurability" type="number" min="0" placeholder="e.g. 250 (leave blank if not a tool)">
+              <div class="hint">Number of uses before the item breaks. Leave blank for non-tool items.</div>
+            </div>
+          </div>
+
+          <div class="lf-ws-form-col">
+            <div class="lf-field">
+              <label>Icon / Texture</label>
+              <div class="lf-dropzone" id="fTextureDropzone">
+                <input type="file" id="fTextureFileInput" accept="image/png,image/jpeg,image/webp" style="display:none;">
+                <div id="fDropzoneEmpty">
+                  <div class="ic">📤</div>
+                  <div class="txt">Click or drag a texture image here</div>
+                  <div class="sub">PNG recommended · 16×16 or 32×32 · max 1MB</div>
+                </div>
+                <div id="fDropzoneFilled" style="display:none;">
+                  <div class="lf-texture-preview"><img id="fTexturePreviewImg" src="" alt=""></div>
+                  <div class="txt" id="fTextureFileName">texture.png</div>
+                  <button type="button" class="lf-btn lf-btn-ghost lf-btn-sm" id="fTextureRemoveBtn" style="margin-top:10px;">Remove</button>
+                </div>
+              </div>
+            </div>
+
+            <div class="lf-field">
+              <div class="lf-ws-recipe-header">
+                <label style="margin-bottom:0;">Crafting Recipe</label>
+                <label class="lf-checkbox-row" style="gap:6px;">
+                  <input type="checkbox" id="fRecipeEnabled">
+                  <span style="font-size:12px;">Enable</span>
+                </label>
+              </div>
+              <div id="fRecipeBuilder" class="lf-recipe-builder" style="display:none;">
+                <div class="lf-recipe-grid" id="fRecipeGrid"><!-- 3x3 built by JS --></div>
+                <div class="lf-recipe-arrow">→</div>
+                <div class="lf-recipe-output">
+                  <div class="lf-recipe-cell filled" id="fRecipeOutputCell">
+                    <img id="fRecipeOutputImg" src="" alt="">
+                  </div>
+                  <input class="lf-input lf-input-sm" id="fRecipeOutputCount" type="number" min="1" value="1" style="width:56px; margin-top:6px;">
+                </div>
+              </div>
+              <div class="hint" id="fRecipeHint" style="display:none;">Type an item/block ID (e.g. <code>minecraft:stick</code> or one of your own entries) into a cell, or leave empty.</div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- ENTITY editor template -->
+      <div class="lf-ws-editform" id="wsFormEntity" style="display:none;">
+        <div class="lf-ws-form-grid">
+          <div class="lf-ws-form-col">
+            <div class="lf-field">
+              <label>Display Name</label>
+              <input class="lf-input" id="eEntryName" type="text" placeholder="e.g. Frost Wolf">
+            </div>
+            <div class="lf-field">
+              <label>System ID</label>
+              <div class="lf-id-preview">
+                <span class="label">entity:</span>
+                <span class="code" id="eIdPreview">namespace:entity_id</span>
+              </div>
+            </div>
+            <div class="lf-field">
+              <label>Description</label>
+              <textarea class="lf-textarea" id="eEntryDesc" placeholder="One or two sentences describing this entity…" rows="3"></textarea>
+            </div>
+            <div class="lf-input-row">
+              <div class="lf-field">
+                <label>Health</label>
+                <input class="lf-input" id="eHealth" type="number" min="1" placeholder="e.g. 20">
+              </div>
+              <div class="lf-field">
+                <label>Move Speed</label>
+                <input class="lf-input" id="eSpeed" type="number" step="0.01" min="0" placeholder="e.g. 0.25">
+              </div>
+            </div>
+            <div class="lf-field">
+              <label>Attack Damage</label>
+              <input class="lf-input" id="eDamage" type="number" min="0" placeholder="e.g. 4 (0 if passive)">
+              <div class="hint">Set to 0 for a passive/friendly entity.</div>
+            </div>
+          </div>
+
+          <div class="lf-ws-form-col">
+            <div class="lf-field">
+              <label>Icon (spawn egg / list thumbnail)</label>
+              <div class="lf-dropzone" id="eTextureDropzone">
+                <input type="file" id="eTextureFileInput" accept="image/png,image/jpeg,image/webp" style="display:none;">
+                <div id="eDropzoneEmpty">
+                  <div class="ic">📤</div>
+                  <div class="txt">Click or drag an icon image here</div>
+                  <div class="sub">PNG recommended · max 1MB</div>
+                </div>
+                <div id="eDropzoneFilled" style="display:none;">
+                  <div class="lf-texture-preview"><img id="eTexturePreviewImg" src="" alt=""></div>
+                  <div class="txt" id="eTextureFileName">icon.png</div>
+                  <button type="button" class="lf-btn lf-btn-ghost lf-btn-sm" id="eTextureRemoveBtn" style="margin-top:10px;">Remove</button>
+                </div>
+              </div>
+            </div>
+
+            <div class="lf-field">
+              <label>3D Model (optional)</label>
+              <div class="lf-dropzone" id="eModelDropzone">
+                <input type="file" id="eModelFileInput" accept=".glb,.gltf" style="display:none;">
+                <div id="eModelDropzoneEmpty">
+                  <div class="ic">🧊</div>
+                  <div class="txt">Click or drag a .glb / .gltf model here</div>
+                  <div class="sub">Falls back to a default mob shape if left empty · max 8MB</div>
+                </div>
+                <div id="eModelDropzoneFilled" style="display:none;">
+                  <div class="txt">✅ <span id="eModelFileName">model.glb</span></div>
+                  <button type="button" class="lf-btn lf-btn-ghost lf-btn-sm" id="eModelRemoveBtn" style="margin-top:10px;">Remove</button>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- EVENT SCRIPT editor template -->
+      <div class="lf-ws-editform" id="wsFormScript" style="display:none; display:flex; flex-direction:column; height:100%;">
+        <div class="lf-ws-script-toolbar">
+          <div class="lf-field" style="margin:0; flex:1;">
+            <input class="lf-input" id="sEntryName" type="text" placeholder="Script name, e.g. On Player Join Welcome">
+          </div>
+          <select class="lf-select" id="sTriggerEvent" style="width:220px;">
+            <option value="onPlayerJoin">Event: Player Joins</option>
+            <option value="onPlayerLeave">Event: Player Leaves</option>
+            <option value="onBlockBreak">Event: Block Broken</option>
+            <option value="onBlockPlace">Event: Block Placed</option>
+            <option value="onEntityDeath">Event: Entity Dies</option>
+            <option value="onTick">Event: Every Tick</option>
+            <option value="custom">Custom / Manual Trigger</option>
+          </select>
+        </div>
+        <div class="lf-field" style="margin-top:10px;">
+          <label>System ID</label>
+          <div class="lf-id-preview">
+            <span class="label">script:</span>
+            <span class="code" id="sIdPreview">namespace:script_id</span>
+          </div>
+        </div>
+        <div class="lf-ws-code-wrap" id="sCodeWrap"><!-- CodeMirror mounts here --></div>
+        <div class="hint" style="margin-top:8px;">Runs sandboxed inside the game. Use the <code>Legends</code> API object (e.g. <code>Legends.player</code>, <code>Legends.world</code>) to interact with the game — see in-game Script Docs for reference.</div>
+      </div>
+
+      <!-- Shared entry footer -->
+      <div class="lf-ws-entry-footer" id="wsEntryFooter" style="display:none;">
+        <button class="lf-btn lf-btn-danger lf-btn-sm" id="wsDeleteEntryBtn">🗑 Delete Entry</button>
+        <div style="flex:1;"></div>
+        <span class="lf-ws-entry-savestate" id="wsEntrySaveState"></span>
+      </div>
+    </main>
   </div>
 </div>
 
@@ -2047,232 +2273,413 @@ a:focus-visible, button:focus-visible, input:focus-visible, textarea:focus-visib
 </script>
 <script>
 /* ============================================================
-   MOD EDITOR MODULE (MCreator-style multistep)
-   Produces a .lens package:
+   MOD WORKSPACE MODULE (MCreator-style, multi-entry)
+   ------------------------------------------------------------
+   One mod project holds many entries: blocks, items, entities,
+   event scripts. Produces a .lens package that WRAPS the legacy
+   single-entry format for backward compatibility:
+
+     @lensformat 2
+     @generator LegendsForce Web Editor
 
      game.lensmodpack{
        namespace: "...",
-       id: "namespace:item_id",
-       displayName: "...",
-       type: "item" | "block" | "mob",
-       category: "...",
-       shortDescription: "...",
-       texture: { mode: "upload", data: "data:image/png;base64,..." }
-               | { mode: "override", target: "minecraft:xxx" }
+       modName: "...",
+       entries: [
+         { id, kind:"block"|"item", displayName, category,
+           description, texture:{mode,data|target}, hardness,
+           dropMode, dropCustomId, durability, recipe:{grid,output,count} },
+         { id, kind:"entity", displayName, description, icon,
+           health, speed, damage, model:{fileName,data} },
+         { id, kind:"script", displayName, event, code }
+       ]
      }
-
-     // Config values outside the main block, as allowed by the brief:
-     @lensformat 1
-     @generator LegendsForce Web Editor
    ============================================================ */
 (function () {
   "use strict";
 
-  const overlay = document.getElementById("editorOverlay");
-  let step = 1;
-  const TOTAL_STEPS = 5;
+  const overlay = document.getElementById("workspaceOverlay");
 
-  let entry = {
+  // ---- project state ----
+  let project = {
+    draftId: null,
     modName: "",
     namespace: "",
-    displayName: "",
-    shortDesc: "",
-    type: "item",
-    category: "items",
-    textureMode: "upload",
-    textureDataURL: null,
-    textureFileName: null,
-    overrideTarget: null,
-    draftId: null // Firestore mods/{id} once saved as draft
+    entries: [] // { localId, kind, ...fields, unsaved }
   };
+  let selectedLocalId = null;
+  let entryCounter = 0;
+  let codeMirrorInstance = null;
+  let saveTimer = null;
 
-  function resetEditor() {
-    step = 1;
-    entry = {
-      modName: "", namespace: "", displayName: "", shortDesc: "",
-      type: "item", category: "items",
-      textureMode: "upload", textureDataURL: null, textureFileName: null,
-      overrideTarget: null, draftId: null
+  function freshEntry(kind) {
+    entryCounter += 1;
+    const base = {
+      localId: "e" + Date.now() + "_" + entryCounter,
+      kind: kind,
+      name: "",
+      description: "",
+      unsaved: true
     };
-    document.getElementById("modName").value = "";
-    document.getElementById("modNamespace").value = "";
-    document.getElementById("entryDisplayName").value = "";
-    document.getElementById("entryShortDesc").value = "";
-    document.getElementById("entryCategory").value = "items";
-    document.querySelectorAll(".lf-type-card").forEach(function (c) { c.classList.toggle("selected", c.dataset.type === "item"); });
-    resetTextureUI();
-    goToStep(1);
+    if (kind === "block" || kind === "item") {
+      return Object.assign(base, {
+        category: kind === "block" ? "blocks" : "items",
+        textureDataURL: null,
+        textureFileName: null,
+        hardness: "",
+        dropMode: "self",
+        dropCustomId: "",
+        durability: "",
+        recipeEnabled: false,
+        recipeGrid: new Array(9).fill(""),
+        recipeOutputCount: 1
+      });
+    }
+    if (kind === "entity") {
+      return Object.assign(base, {
+        health: "", speed: "", damage: "",
+        iconDataURL: null, iconFileName: null,
+        modelDataURL: null, modelFileName: null
+      });
+    }
+    if (kind === "script") {
+      return Object.assign(base, {
+        event: "onPlayerJoin",
+        code: "// " + "Runs when the trigger event fires.\n" + "Legends.on('ready', function () {\n  \n});\n"
+      });
+    }
+    return base;
   }
 
-  function resetTextureUI() {
-    document.getElementById("dropzoneEmpty").style.display = "block";
-    document.getElementById("dropzoneFilled").style.display = "none";
-    document.getElementById("textureFileInput").value = "";
-    document.querySelectorAll(".lf-radio-card").forEach(function (c) { c.classList.toggle("checked", c.dataset.mode === "upload"); });
-    document.getElementById("uploadModePanel").style.display = "block";
-    document.getElementById("overrideModePanel").style.display = "none";
-    document.querySelectorAll(".lf-override-item").forEach(function (i) { i.classList.remove("selected"); });
+  function entryById(id) {
+    return project.entries.find(function (e) { return e.localId === id; });
   }
 
+  function markUnsaved() {
+    document.getElementById("wsSaveState").textContent = "Unsaved changes";
+  }
+  function markSaved() {
+    document.getElementById("wsSaveState").textContent = "All changes saved";
+  }
+
+  // ------------------------------------------------------------
+  // OPEN / RESET / CLOSE
+  // ------------------------------------------------------------
   window.LF.openEditor = function (existingModId) {
     if (!window.LF.requireAuth("Creating a mod")) return;
-    resetEditor();
-    document.getElementById("editorModalTitle").textContent = "Create Mod Item";
+    resetProject();
+    if (existingModId) {
+      loadExistingDraft(existingModId);
+    }
     overlay.classList.add("open");
+    document.body.style.overflow = "hidden";
   };
 
-  function closeEditor() { overlay.classList.remove("open"); }
-  document.getElementById("editorCloseBtn").addEventListener("click", closeEditor);
-  overlay.addEventListener("click", function (e) { if (e.target === overlay) closeEditor(); });
-
-  document.getElementById("createModBtn").addEventListener("click", function () { window.LF.openEditor(); });
-  document.getElementById("myModsCreateBtn") && document.getElementById("myModsCreateBtn").addEventListener("click", function () { window.LF.openEditor(); });
-
-  // ------------------------------------------------------------
-  // STEP NAVIGATION
-  // ------------------------------------------------------------
-  function goToStep(n) {
-    step = n;
-    document.querySelectorAll(".lf-editor-step").forEach(function (s) {
-      const sn = parseInt(s.dataset.step, 10);
-      s.classList.toggle("active", sn === n);
-      s.classList.toggle("done", sn < n);
-    });
-    document.querySelectorAll(".lf-editor-panel").forEach(function (p) {
-      p.classList.toggle("active", parseInt(p.dataset.panel, 10) === n);
-    });
-    document.getElementById("editorBackBtn").style.display = n === 1 ? "none" : "inline-flex";
-    document.getElementById("editorNextBtn").textContent = n === TOTAL_STEPS ? "💾 Save Mod" : "Next →";
-
-    if (n === 2) updateIdPreview();
-    if (n === 3 && entry.textureMode === "override") renderOverrideList();
-    if (n === 4) updatePreviewStage();
-    if (n === 5) updateReview();
+  function resetProject() {
+    project = { draftId: null, modName: "", namespace: "", entries: [] };
+    selectedLocalId = null;
+    document.getElementById("wsModName").value = "";
+    document.getElementById("wsNamespace").value = "";
+    renderSidebar();
+    showWelcome();
+    markSaved();
   }
 
-  document.getElementById("editorBackBtn").addEventListener("click", function () {
-    if (step > 1) goToStep(step - 1);
+  function closeWorkspace() {
+    overlay.classList.remove("open");
+    document.body.style.overflow = "";
+  }
+  document.getElementById("wsCloseBtn").addEventListener("click", function () {
+    closeWorkspace();
   });
 
-  document.getElementById("editorNextBtn").addEventListener("click", function () {
-    if (!validateStep(step)) return;
-    collectStepData(step);
-    if (step === TOTAL_STEPS) {
-      saveMod("draft", true);
+  document.getElementById("wsModName").addEventListener("input", function (e) {
+    project.modName = e.target.value;
+    markUnsaved();
+  });
+  document.getElementById("wsNamespace").addEventListener("input", function (e) {
+    project.namespace = window.LF.sanitizeIdPart(e.target.value);
+    refreshAllIdPreviews();
+    markUnsaved();
+  });
+
+  function loadExistingDraft(modId) {
+    // Reserved for future "edit existing draft" support — loads mod meta
+    // and its latest file's parsed entries back into project.entries.
+    project.draftId = modId;
+  }
+
+  // ------------------------------------------------------------
+  // ADD ENTRY DROPDOWN
+  // ------------------------------------------------------------
+  const addBtn = document.getElementById("wsAddBtn");
+  const addMenu = document.getElementById("wsAddMenu");
+  addBtn.addEventListener("click", function (e) {
+    e.stopPropagation();
+    addMenu.classList.toggle("open");
+  });
+  document.addEventListener("click", function () { addMenu.classList.remove("open"); });
+  addMenu.querySelectorAll("button[data-type]").forEach(function (btn) {
+    btn.addEventListener("click", function () {
+      const kind = btn.dataset.type;
+      const entry = freshEntry(kind);
+      project.entries.push(entry);
+      renderSidebar();
+      selectEntry(entry.localId);
+      markUnsaved();
+    });
+  });
+
+  // ------------------------------------------------------------
+  // SIDEBAR RENDER
+  // ------------------------------------------------------------
+  const KIND_META = {
+    block:  { icon: "🧱", label: "Blocks" },
+    item:   { icon: "⚔️", label: "Items" },
+    entity: { icon: "👾", label: "Entities" },
+    script: { icon: "📜", label: "Event Scripts" }
+  };
+
+  function renderSidebar() {
+    const groupsEl = document.getElementById("wsGroups");
+    const emptyEl = document.getElementById("wsSidebarEmpty");
+    if (!project.entries.length) {
+      groupsEl.innerHTML = "";
+      emptyEl.style.display = "block";
+      return;
+    }
+    emptyEl.style.display = "none";
+
+    const order = ["block", "item", "entity", "script"];
+    let html = "";
+    order.forEach(function (kind) {
+      const list = project.entries.filter(function (e) { return e.kind === kind; });
+      if (!list.length) return;
+      const meta = KIND_META[kind];
+      html += '<div class="lf-ws-group"><div class="lf-ws-group-label">' + meta.icon + " " + meta.label +
+        ' <span class="count">(' + list.length + ')</span></div>';
+      list.forEach(function (entry) {
+        const sel = entry.localId === selectedLocalId ? "selected" : "";
+        const unsavedCls = entry.unsaved ? "unsaved" : "";
+        const name = window.LF.escapeHTML(entry.name || "Untitled " + kindSingular(kind));
+        html += '<div class="lf-ws-entry-item ' + sel + " " + unsavedCls + '" data-local-id="' + entry.localId + '">' +
+          '<span class="ic">' + meta.icon + '</span><span class="nm">' + name + '</span><span class="dot"></span></div>';
+      });
+      html += "</div>";
+    });
+    groupsEl.innerHTML = html;
+
+    groupsEl.querySelectorAll(".lf-ws-entry-item").forEach(function (el) {
+      el.addEventListener("click", function () { selectEntry(el.dataset.localId); });
+    });
+  }
+
+  function kindSingular(kind) {
+    return { block: "Block", item: "Item", entity: "Entity", script: "Script" }[kind] || kind;
+  }
+
+  // ------------------------------------------------------------
+  // SELECT / SHOW FORMS
+  // ------------------------------------------------------------
+  function showWelcome() {
+    document.getElementById("wsWelcome").style.display = "block";
+    document.getElementById("wsFormBlockItem").style.display = "none";
+    document.getElementById("wsFormEntity").style.display = "none";
+    document.getElementById("wsFormScript").style.display = "none";
+    document.getElementById("wsEntryFooter").style.display = "none";
+  }
+
+  function selectEntry(localId) {
+    selectedLocalId = localId;
+    const entry = entryById(localId);
+    if (!entry) { showWelcome(); return; }
+
+    document.getElementById("wsWelcome").style.display = "none";
+    document.getElementById("wsEntryFooter").style.display = "flex";
+    document.getElementById("wsFormBlockItem").style.display = "none";
+    document.getElementById("wsFormEntity").style.display = "none";
+    document.getElementById("wsFormScript").style.display = "none";
+
+    if (entry.kind === "block" || entry.kind === "item") {
+      renderBlockItemForm(entry);
+      document.getElementById("wsFormBlockItem").style.display = "block";
+    } else if (entry.kind === "entity") {
+      renderEntityForm(entry);
+      document.getElementById("wsFormEntity").style.display = "block";
+    } else if (entry.kind === "script") {
+      renderScriptForm(entry);
+      document.getElementById("wsFormScript").style.display = "flex";
+    }
+    renderSidebar();
+  }
+
+  document.getElementById("wsDeleteEntryBtn").addEventListener("click", function () {
+    if (!selectedLocalId) return;
+    if (!confirm("Delete this entry? This can't be undone.")) return;
+    project.entries = project.entries.filter(function (e) { return e.localId !== selectedLocalId; });
+    selectedLocalId = null;
+    renderSidebar();
+    showWelcome();
+    markUnsaved();
+  });
+
+  // ------------------------------------------------------------
+  // ID PREVIEW HELPERS
+  // ------------------------------------------------------------
+  function computeId(entry) {
+    const ns = project.namespace || "mod";
+    const idPart = window.LF.sanitizeIdPart(entry.name) || "unnamed";
+    return ns + ":" + idPart;
+  }
+  function refreshAllIdPreviews() {
+    if (!selectedLocalId) return;
+    const entry = entryById(selectedLocalId);
+    if (!entry) return;
+    if (entry.kind === "block" || entry.kind === "item") {
+      document.getElementById("fIdPreview").textContent = computeId(entry);
+    } else if (entry.kind === "entity") {
+      document.getElementById("eIdPreview").textContent = computeId(entry);
+    } else if (entry.kind === "script") {
+      document.getElementById("sIdPreview").textContent = computeId(entry);
+    }
+  }
+
+  // ------------------------------------------------------------
+  // BLOCK / ITEM FORM
+  // ------------------------------------------------------------
+  function renderBlockItemForm(entry) {
+    document.getElementById("fEntryName").value = entry.name;
+    document.getElementById("fEntryDesc").value = entry.description;
+    document.getElementById("fEntryCategory").value = entry.category;
+    document.getElementById("fIdKind").textContent = entry.kind + ":";
+    document.getElementById("fIdPreview").textContent = computeId(entry);
+    document.getElementById("fHardness").value = entry.hardness;
+    document.getElementById("fDurability").value = entry.durability;
+    document.getElementById("fDropCustomId").value = entry.dropCustomId;
+    document.getElementById("fDropCustomId").style.display = entry.dropMode === "custom" ? "block" : "none";
+
+    document.querySelectorAll('#fBlockDropField .lf-radio-card').forEach(function (c) {
+      const on = c.dataset.dropmode === entry.dropMode;
+      c.classList.toggle("checked", on);
+      c.querySelector("input").checked = on;
+    });
+
+    document.getElementById("fBlockOnlyFields").style.display = entry.kind === "block" ? "block" : "none";
+    document.getElementById("fBlockDropField").style.display = entry.kind === "block" ? "block" : "none";
+    document.getElementById("fItemOnlyFields").style.display = entry.kind === "item" ? "block" : "none";
+
+    // texture
+    if (entry.textureDataURL) {
+      document.getElementById("fTexturePreviewImg").src = entry.textureDataURL;
+      document.getElementById("fTextureFileName").textContent = entry.textureFileName || "texture.png";
+      document.getElementById("fDropzoneEmpty").style.display = "none";
+      document.getElementById("fDropzoneFilled").style.display = "block";
     } else {
-      goToStep(step + 1);
+      document.getElementById("fDropzoneEmpty").style.display = "block";
+      document.getElementById("fDropzoneFilled").style.display = "none";
     }
-  });
 
-  document.getElementById("editorSaveDraftBtn").addEventListener("click", function () {
-    if (!validateStep(1)) { goToStep(1); return; }
-    collectStepData(step);
-    saveMod("draft", false);
-  });
+    // recipe
+    document.getElementById("fRecipeEnabled").checked = entry.recipeEnabled;
+    document.getElementById("fRecipeBuilder").style.display = entry.recipeEnabled ? "flex" : "none";
+    document.getElementById("fRecipeHint").style.display = entry.recipeEnabled ? "block" : "none";
+    document.getElementById("fRecipeOutputCount").value = entry.recipeOutputCount;
+    document.getElementById("fRecipeOutputImg").src = entry.textureDataURL || "";
+    renderRecipeGrid(entry);
+  }
 
-  // Sidebar step click (only allow going back or to a completed step)
-  document.querySelectorAll(".lf-editor-step").forEach(function (s) {
-    s.addEventListener("click", function () {
-      const target = parseInt(s.dataset.step, 10);
-      if (target < step) { collectStepData(step); goToStep(target); }
+  function renderRecipeGrid(entry) {
+    const grid = document.getElementById("fRecipeGrid");
+    grid.innerHTML = "";
+    for (let i = 0; i < 9; i++) {
+      const cell = document.createElement("div");
+      cell.className = "lf-recipe-cell" + (entry.recipeGrid[i] ? " filled" : "");
+      const label = document.createElement("div");
+      label.className = "label";
+      label.textContent = entry.recipeGrid[i] || "";
+      const input = document.createElement("input");
+      input.type = "text";
+      input.value = entry.recipeGrid[i] || "";
+      input.title = "Item/block ID, e.g. minecraft:stick";
+      input.addEventListener("change", function () {
+        entry.recipeGrid[i] = input.value.trim();
+        renderRecipeGrid(entry);
+        markEntryUnsaved(entry);
+      });
+      cell.appendChild(label);
+      cell.appendChild(input);
+      grid.appendChild(cell);
+    }
+  }
+
+  ["fEntryName", "fEntryDesc", "fEntryCategory", "fHardness", "fDurability", "fDropCustomId", "fRecipeOutputCount"]
+    .forEach(function (id) {
+      const el = document.getElementById(id);
+      el.addEventListener("input", function () { syncBlockItemFromForm(); });
+      el.addEventListener("change", function () { syncBlockItemFromForm(); });
     });
-  });
 
-  function validateStep(n) {
-    if (n === 1) {
-      const modName = document.getElementById("modName").value.trim();
-      const namespace = document.getElementById("modNamespace").value.trim();
-      const displayName = document.getElementById("entryDisplayName").value.trim();
-      if (!modName) { window.LF.toast("Please enter a mod name.", "warn"); return false; }
-      if (!namespace) { window.LF.toast("Please enter a namespace (e.g. \"mod\" or your own prefix).", "warn"); return false; }
-      if (!displayName) { window.LF.toast("Please enter an item/block display name.", "warn"); return false; }
-      const sanitizedNs = window.LF.sanitizeIdPart(namespace);
-      if (!sanitizedNs) { window.LF.toast("Namespace must contain at least one letter or number.", "warn"); return false; }
-    }
-    if (n === 2) {
-      // system id must be non-empty after sanitization
-      const ns = window.LF.sanitizeIdPart(document.getElementById("modNamespace").value);
-      const id = window.LF.sanitizeIdPart(document.getElementById("entryDisplayName").value);
-      if (!ns || !id) { window.LF.toast("Couldn't generate a valid system ID — check your namespace and name.", "warn"); return false; }
-    }
-    if (n === 3) {
-      if (entry.textureMode === "upload" && !entry.textureDataURL) {
-        // allow proceeding without texture but warn once
-      }
-      if (entry.textureMode === "override" && !entry.overrideTarget) {
-        window.LF.toast("Please select a vanilla block/item to override.", "warn"); return false;
-      }
-    }
-    return true;
+  function syncBlockItemFromForm() {
+    const entry = entryById(selectedLocalId);
+    if (!entry) return;
+    entry.name = document.getElementById("fEntryName").value.trim();
+    entry.description = document.getElementById("fEntryDesc").value.trim();
+    entry.category = document.getElementById("fEntryCategory").value;
+    entry.hardness = document.getElementById("fHardness").value;
+    entry.durability = document.getElementById("fDurability").value;
+    entry.dropCustomId = document.getElementById("fDropCustomId").value.trim();
+    entry.recipeOutputCount = parseInt(document.getElementById("fRecipeOutputCount").value, 10) || 1;
+    document.getElementById("fIdPreview").textContent = computeId(entry);
+    markEntryUnsaved(entry);
+    renderSidebar();
   }
 
-  function collectStepData(n) {
-    if (n === 1) {
-      entry.modName = document.getElementById("modName").value.trim();
-      entry.namespace = window.LF.sanitizeIdPart(document.getElementById("modNamespace").value);
-      entry.displayName = document.getElementById("entryDisplayName").value.trim();
-      entry.shortDesc = document.getElementById("entryShortDesc").value.trim();
-    }
-    if (n === 2) {
-      entry.category = document.getElementById("entryCategory").value;
-    }
-  }
-
-  // ------------------------------------------------------------
-  // STEP 1→2: live namespace/id sanitization preview
-  // ------------------------------------------------------------
-  function updateIdPreview() {
-    const ns = window.LF.sanitizeIdPart(document.getElementById("modNamespace").value) || "namespace";
-    const id = window.LF.sanitizeIdPart(document.getElementById("entryDisplayName").value) || "item_id";
-    document.getElementById("systemIdPreview").innerHTML = ns + '<span class="sep">:</span>' + id;
-  }
-  document.getElementById("modNamespace").addEventListener("input", updateIdPreview);
-  document.getElementById("entryDisplayName").addEventListener("input", updateIdPreview);
-
-  // ------------------------------------------------------------
-  // STEP 2: type selection
-  // ------------------------------------------------------------
-  document.getElementById("typeGrid").addEventListener("click", function (e) {
-    const card = e.target.closest(".lf-type-card");
-    if (!card) return;
-    document.querySelectorAll(".lf-type-card").forEach(function (c) { c.classList.remove("selected"); });
-    card.classList.add("selected");
-    entry.type = card.dataset.type;
-    // sensible category default
-    const catMap = { item: "items", block: "blocks", mob: "mobs" };
-    entry.category = catMap[entry.type] || "other";
-    document.getElementById("entryCategory").value = entry.category;
-  });
-
-  // ------------------------------------------------------------
-  // STEP 3: texture upload / override
-  // ------------------------------------------------------------
-  document.querySelectorAll("#textureModeCards .lf-radio-card").forEach(function (card) {
+  document.querySelectorAll('#fBlockDropField .lf-radio-card').forEach(function (card) {
     card.addEventListener("click", function () {
-      document.querySelectorAll("#textureModeCards .lf-radio-card").forEach(function (c) { c.classList.remove("checked"); });
-      card.classList.add("checked");
-      const mode = card.dataset.mode;
-      entry.textureMode = mode;
-      document.getElementById("uploadModePanel").style.display = mode === "upload" ? "block" : "none";
-      document.getElementById("overrideModePanel").style.display = mode === "override" ? "block" : "none";
-      if (mode === "override" && !document.getElementById("overrideList").children.length) renderOverrideList();
+      const entry = entryById(selectedLocalId);
+      if (!entry) return;
+      entry.dropMode = card.dataset.dropmode;
+      document.getElementById("fDropCustomId").style.display = entry.dropMode === "custom" ? "block" : "none";
+      renderBlockItemForm(entry);
+      markEntryUnsaved(entry);
     });
   });
 
-  const dropzone = document.getElementById("textureDropzone");
-  const fileInput = document.getElementById("textureFileInput");
-  dropzone.addEventListener("click", function () { fileInput.click(); });
-  dropzone.addEventListener("dragover", function (e) { e.preventDefault(); dropzone.classList.add("dragover"); });
-  dropzone.addEventListener("dragleave", function () { dropzone.classList.remove("dragover"); });
-  dropzone.addEventListener("drop", function (e) {
-    e.preventDefault(); dropzone.classList.remove("dragover");
-    if (e.dataTransfer.files && e.dataTransfer.files[0]) handleTextureFile(e.dataTransfer.files[0]);
-  });
-  fileInput.addEventListener("change", function () {
-    if (fileInput.files[0]) handleTextureFile(fileInput.files[0]);
+  document.getElementById("fRecipeEnabled").addEventListener("change", function (e) {
+    const entry = entryById(selectedLocalId);
+    if (!entry) return;
+    entry.recipeEnabled = e.target.checked;
+    document.getElementById("fRecipeBuilder").style.display = entry.recipeEnabled ? "flex" : "none";
+    document.getElementById("fRecipeHint").style.display = entry.recipeEnabled ? "block" : "none";
+    markEntryUnsaved(entry);
   });
 
-  function handleTextureFile(file) {
+  const fTextureDropzone = document.getElementById("fTextureDropzone");
+  fTextureDropzone.addEventListener("click", function () { document.getElementById("fTextureFileInput").click(); });
+  document.getElementById("fTextureFileInput").addEventListener("change", function (e) {
+    const file = e.target.files[0];
+    handleTextureFile(file, function (dataURL, fileName) {
+      const entry = entryById(selectedLocalId);
+      if (!entry) return;
+      entry.textureDataURL = dataURL;
+      entry.textureFileName = fileName;
+      renderBlockItemForm(entry);
+      markEntryUnsaved(entry);
+    });
+  });
+  document.getElementById("fTextureRemoveBtn").addEventListener("click", function (e) {
+    e.stopPropagation();
+    const entry = entryById(selectedLocalId);
+    if (!entry) return;
+    entry.textureDataURL = null;
+    entry.textureFileName = null;
+    document.getElementById("fTextureFileInput").value = "";
+    renderBlockItemForm(entry);
+    markEntryUnsaved(entry);
+  });
+
+  function handleTextureFile(file, cb) {
+    if (!file) return;
     if (!file.type.match(/^image\/(png|jpeg|webp)$/)) {
       window.LF.toast("Please upload a PNG, JPEG, or WEBP image.", "error"); return;
     }
@@ -2280,108 +2687,234 @@ a:focus-visible, button:focus-visible, input:focus-visible, textarea:focus-visib
       window.LF.toast("Texture must be under 1MB.", "warn"); return;
     }
     const reader = new FileReader();
-    reader.onload = function (e) {
-      entry.textureDataURL = e.target.result;
-      entry.textureFileName = file.name;
-      document.getElementById("texturePreviewImg").src = e.target.result;
-      document.getElementById("textureFileName").textContent = file.name;
-      document.getElementById("dropzoneEmpty").style.display = "none";
-      document.getElementById("dropzoneFilled").style.display = "block";
-    };
+    reader.onload = function (e) { cb(e.target.result, file.name); };
     reader.readAsDataURL(file);
   }
 
-  document.getElementById("textureRemoveBtn").addEventListener("click", function (e) {
-    e.stopPropagation();
-    entry.textureDataURL = null;
-    entry.textureFileName = null;
-    document.getElementById("dropzoneEmpty").style.display = "block";
-    document.getElementById("dropzoneFilled").style.display = "none";
-    fileInput.value = "";
+  // ------------------------------------------------------------
+  // ENTITY FORM
+  // ------------------------------------------------------------
+  function renderEntityForm(entry) {
+    document.getElementById("eEntryName").value = entry.name;
+    document.getElementById("eEntryDesc").value = entry.description;
+    document.getElementById("eIdPreview").textContent = computeId(entry);
+    document.getElementById("eHealth").value = entry.health;
+    document.getElementById("eSpeed").value = entry.speed;
+    document.getElementById("eDamage").value = entry.damage;
+
+    if (entry.iconDataURL) {
+      document.getElementById("eTexturePreviewImg").src = entry.iconDataURL;
+      document.getElementById("eTextureFileName").textContent = entry.iconFileName || "icon.png";
+      document.getElementById("eDropzoneEmpty").style.display = "none";
+      document.getElementById("eDropzoneFilled").style.display = "block";
+    } else {
+      document.getElementById("eDropzoneEmpty").style.display = "block";
+      document.getElementById("eDropzoneFilled").style.display = "none";
+    }
+
+    if (entry.modelFileName) {
+      document.getElementById("eModelFileName").textContent = entry.modelFileName;
+      document.getElementById("eModelDropzoneEmpty").style.display = "none";
+      document.getElementById("eModelDropzoneFilled").style.display = "block";
+    } else {
+      document.getElementById("eModelDropzoneEmpty").style.display = "block";
+      document.getElementById("eModelDropzoneFilled").style.display = "none";
+    }
+  }
+
+  ["eEntryName", "eEntryDesc", "eHealth", "eSpeed", "eDamage"].forEach(function (id) {
+    const el = document.getElementById(id);
+    el.addEventListener("input", syncEntityFromForm);
+    el.addEventListener("change", syncEntityFromForm);
   });
 
-  function renderOverrideList(filter) {
-    const list = window.LF.VANILLA_REGISTRY.filter(function (v) {
-      if (entry.type && v.type !== entry.type) return false;
-      if (filter) return v.name.toLowerCase().includes(filter.toLowerCase());
-      return true;
-    });
-    const container = document.getElementById("overrideList");
-    if (!list.length) {
-      container.innerHTML = '<div style="padding:20px; text-align:center; color:var(--text-tertiary); font-size:13px;">No matching vanilla entries.</div>';
-      return;
-    }
-    container.innerHTML = list.map(function (v) {
-      const checked = entry.overrideTarget === v.id ? "checked" : "";
-      const selectedClass = entry.overrideTarget === v.id ? "selected" : "";
-      return (
-        '<label class="lf-override-item ' + selectedClass + '" data-target="' + v.id + '">' +
-          '<span class="sw" style="background:' + v.color + '"></span>' +
-          '<span class="info"><div class="n">' + v.name + '</div><div class="id">' + v.id + '</div></span>' +
-          '<input type="radio" name="overrideTarget" value="' + v.id + '" ' + checked + '>' +
-        '</label>'
-      );
-    }).join("");
-
-    container.querySelectorAll(".lf-override-item").forEach(function (item) {
-      item.addEventListener("click", function () {
-        entry.overrideTarget = item.dataset.target;
-        container.querySelectorAll(".lf-override-item").forEach(function (i) { i.classList.remove("selected"); });
-        item.classList.add("selected");
-        item.querySelector("input").checked = true;
-      });
-    });
-  }
-  document.getElementById("overrideSearch").addEventListener("input", function (e) { renderOverrideList(e.target.value); });
-
-  // ------------------------------------------------------------
-  // STEP 4: preview stage
-  // ------------------------------------------------------------
-  function updatePreviewStage() {
-    const img = document.getElementById("heldItemPreview");
-    if (entry.textureMode === "upload" && entry.textureDataURL) {
-      img.src = entry.textureDataURL;
-      img.style.display = "block";
-    } else if (entry.textureMode === "override" && entry.overrideTarget) {
-      const v = window.LF.VANILLA_REGISTRY.find(function (x) { return x.id === entry.overrideTarget; });
-      // no real texture asset for vanilla items in this demo — render a colored swatch as SVG data URL
-      const color = v ? v.color : "#4facfe";
-      img.src = "data:image/svg+xml;utf8," + encodeURIComponent('<svg xmlns="http://www.w3.org/2000/svg" width="64" height="64"><rect width="64" height="64" fill="' + color + '"/></svg>');
-      img.style.display = "block";
-    } else {
-      img.style.display = "none";
-    }
+  function syncEntityFromForm() {
+    const entry = entryById(selectedLocalId);
+    if (!entry) return;
+    entry.name = document.getElementById("eEntryName").value.trim();
+    entry.description = document.getElementById("eEntryDesc").value.trim();
+    entry.health = document.getElementById("eHealth").value;
+    entry.speed = document.getElementById("eSpeed").value;
+    entry.damage = document.getElementById("eDamage").value;
+    document.getElementById("eIdPreview").textContent = computeId(entry);
+    markEntryUnsaved(entry);
+    renderSidebar();
   }
 
-  // ------------------------------------------------------------
-  // STEP 5: review + .lens generation
-  // ------------------------------------------------------------
-  function buildLensObject() {
-    const textureBlock = entry.textureMode === "upload"
-      ? { mode: "upload", data: entry.textureDataURL || null, fileName: entry.textureFileName || null }
-      : { mode: "override", target: entry.overrideTarget };
+  document.getElementById("eTextureDropzone").addEventListener("click", function () { document.getElementById("eTextureFileInput").click(); });
+  document.getElementById("eTextureFileInput").addEventListener("change", function (e) {
+    const file = e.target.files[0];
+    handleTextureFile(file, function (dataURL, fileName) {
+      const entry = entryById(selectedLocalId);
+      if (!entry) return;
+      entry.iconDataURL = dataURL;
+      entry.iconFileName = fileName;
+      renderEntityForm(entry);
+      markEntryUnsaved(entry);
+    });
+  });
+  document.getElementById("eTextureRemoveBtn").addEventListener("click", function (e) {
+    e.stopPropagation();
+    const entry = entryById(selectedLocalId);
+    if (!entry) return;
+    entry.iconDataURL = null; entry.iconFileName = null;
+    document.getElementById("eTextureFileInput").value = "";
+    renderEntityForm(entry);
+    markEntryUnsaved(entry);
+  });
 
-    return {
-      namespace: entry.namespace,
-      id: entry.namespace + ":" + window.LF.sanitizeIdPart(entry.displayName),
-      displayName: entry.displayName,
-      type: entry.type,
-      category: entry.category,
-      shortDescription: entry.shortDesc,
-      texture: textureBlock
+  document.getElementById("eModelDropzone").addEventListener("click", function () { document.getElementById("eModelFileInput").click(); });
+  document.getElementById("eModelFileInput").addEventListener("change", function (e) {
+    const file = e.target.files[0];
+    if (!file) return;
+    if (!/\.(glb|gltf)$/i.test(file.name)) {
+      window.LF.toast("Please upload a .glb or .gltf model file.", "error"); return;
+    }
+    if (file.size > 8 * 1024 * 1024) {
+      window.LF.toast("Model must be under 8MB.", "warn"); return;
+    }
+    const reader = new FileReader();
+    reader.onload = function (ev) {
+      const entry = entryById(selectedLocalId);
+      if (!entry) return;
+      entry.modelDataURL = ev.target.result;
+      entry.modelFileName = file.name;
+      renderEntityForm(entry);
+      markEntryUnsaved(entry);
     };
+    reader.readAsDataURL(file);
+  });
+  document.getElementById("eModelRemoveBtn").addEventListener("click", function (e) {
+    e.stopPropagation();
+    const entry = entryById(selectedLocalId);
+    if (!entry) return;
+    entry.modelDataURL = null; entry.modelFileName = null;
+    document.getElementById("eModelFileInput").value = "";
+    renderEntityForm(entry);
+    markEntryUnsaved(entry);
+  });
+
+  // ------------------------------------------------------------
+  // EVENT SCRIPT FORM (CodeMirror)
+  // ------------------------------------------------------------
+  function renderScriptForm(entry) {
+    document.getElementById("sEntryName").value = entry.name;
+    document.getElementById("sTriggerEvent").value = entry.event;
+    document.getElementById("sIdPreview").textContent = computeId(entry);
+
+    const wrap = document.getElementById("sCodeWrap");
+    wrap.innerHTML = "";
+    if (window.CodeMirror) {
+      codeMirrorInstance = window.CodeMirror(wrap, {
+        value: entry.code || "",
+        mode: "javascript",
+        theme: "dracula",
+        lineNumbers: true,
+        tabSize: 2,
+        viewportMargin: Infinity
+      });
+      codeMirrorInstance.on("change", function (cm) {
+        entry.code = cm.getValue();
+        markEntryUnsaved(entry);
+      });
+    } else {
+      // fallback plain textarea if CDN failed to load
+      const ta = document.createElement("textarea");
+      ta.className = "lf-textarea";
+      ta.style.cssText = "height:100%; font-family:var(--font-mono); font-size:13px;";
+      ta.value = entry.code || "";
+      ta.addEventListener("input", function () { entry.code = ta.value; markEntryUnsaved(entry); });
+      wrap.appendChild(ta);
+    }
   }
 
-  function buildLensFileText() {
-    const obj = buildLensObject();
-    const body = JSON.stringify(obj, null, 2);
-    return (
-      "@lensformat 1\n" +
-      "@generator LegendsForce Web Editor\n\n" +
-      "game.lensmodpack{\n" +
-      indentBlock(body, 2) +
-      "\n}\n"
-    );
+  document.getElementById("sEntryName").addEventListener("input", function () {
+    const entry = entryById(selectedLocalId);
+    if (!entry) return;
+    entry.name = document.getElementById("sEntryName").value.trim();
+    document.getElementById("sIdPreview").textContent = computeId(entry);
+    markEntryUnsaved(entry);
+    renderSidebar();
+  });
+  document.getElementById("sTriggerEvent").addEventListener("change", function () {
+    const entry = entryById(selectedLocalId);
+    if (!entry) return;
+    entry.event = document.getElementById("sTriggerEvent").value;
+    markEntryUnsaved(entry);
+  });
+
+  function markEntryUnsaved(entry) {
+    entry.unsaved = true;
+    markUnsaved();
+    clearTimeout(saveTimer);
+    saveTimer = setTimeout(function () {
+      document.getElementById("wsEntrySaveState").textContent = "Edited";
+    }, 200);
+  }
+
+  // ------------------------------------------------------------
+  // .lens BUILD (wraps legacy @lensformat header, multi-entry body)
+  // ------------------------------------------------------------
+  function buildEntryObject(entry) {
+    if (entry.kind === "block" || entry.kind === "item") {
+      const out = {
+        id: computeId(entry),
+        kind: entry.kind,
+        displayName: entry.name,
+        category: entry.category,
+        description: entry.description,
+        texture: entry.textureDataURL
+          ? { mode: "upload", data: entry.textureDataURL, fileName: entry.textureFileName }
+          : { mode: "none" }
+      };
+      if (entry.kind === "block") {
+        out.hardness = entry.hardness === "" ? null : parseFloat(entry.hardness);
+        out.drop = entry.dropMode === "custom"
+          ? { mode: "custom", id: entry.dropCustomId }
+          : { mode: "self" };
+      }
+      if (entry.kind === "item") {
+        out.durability = entry.durability === "" ? null : parseInt(entry.durability, 10);
+      }
+      if (entry.recipeEnabled) {
+        out.recipe = {
+          grid: entry.recipeGrid,
+          output: { id: computeId(entry), count: entry.recipeOutputCount || 1 }
+        };
+      }
+      return out;
+    }
+    if (entry.kind === "entity") {
+      return {
+        id: computeId(entry),
+        kind: "entity",
+        displayName: entry.name,
+        description: entry.description,
+        health: entry.health === "" ? null : parseFloat(entry.health),
+        speed: entry.speed === "" ? null : parseFloat(entry.speed),
+        damage: entry.damage === "" ? null : parseFloat(entry.damage),
+        icon: entry.iconDataURL ? { data: entry.iconDataURL, fileName: entry.iconFileName } : null,
+        model: entry.modelDataURL ? { data: entry.modelDataURL, fileName: entry.modelFileName } : null
+      };
+    }
+    if (entry.kind === "script") {
+      return {
+        id: computeId(entry),
+        kind: "script",
+        displayName: entry.name,
+        event: entry.event,
+        code: entry.code
+      };
+    }
+    return null;
+  }
+
+  function buildLensObject() {
+    return {
+      namespace: project.namespace,
+      modName: project.modName,
+      entries: project.entries.map(buildEntryObject).filter(Boolean)
+    };
   }
 
   function indentBlock(str, spaces) {
@@ -2389,49 +2922,58 @@ a:focus-visible, button:focus-visible, input:focus-visible, textarea:focus-visib
     return str.split("\n").map(function (l) { return pad + l; }).join("\n");
   }
 
-  function updateReview() {
-    collectStepData(1); collectStepData(2);
-    const id = entry.namespace + ":" + window.LF.sanitizeIdPart(entry.displayName);
-    document.getElementById("reviewSummary").innerHTML =
-      '<div class="lf-summary-row"><span class="k">Mod Name</span><span class="v">' + window.LF.escapeHTML(entry.modName) + '</span></div>' +
-      '<div class="lf-summary-row"><span class="k">Item Name</span><span class="v">' + window.LF.escapeHTML(entry.displayName) + '</span></div>' +
-      '<div class="lf-summary-row"><span class="k">System ID</span><span class="v">' + window.LF.escapeHTML(id) + '</span></div>' +
-      '<div class="lf-summary-row"><span class="k">Type</span><span class="v">' + entry.type + '</span></div>' +
-      '<div class="lf-summary-row"><span class="k">Category</span><span class="v">' + entry.category + '</span></div>' +
-      '<div class="lf-summary-row"><span class="k">Texture</span><span class="v">' + (entry.textureMode === "upload" ? (entry.textureFileName || "Not uploaded") : "Override: " + (entry.overrideTarget || "—")) + '</span></div>';
-    document.getElementById("lensCodePreview").textContent = buildLensFileText();
+  function buildLensFileText() {
+    const obj = buildLensObject();
+    const body = JSON.stringify(obj, null, 2);
+    return (
+      "@lensformat 2\n" +
+      "@generator LegendsForce Web Editor\n\n" +
+      "game.lensmodpack{\n" +
+      indentBlock(body, 2) +
+      "\n}\n"
+    );
   }
+  window.LF.buildLensFileText = buildLensFileText;
 
   // ------------------------------------------------------------
-  // SAVE: creates/updates a draft mod doc in Firestore
+  // SAVE DRAFT / EXPORT / PUBLISH
   // ------------------------------------------------------------
-  function saveMod(status, thenOpenPublish) {
-    collectStepData(1); collectStepData(2);
-    if (!entry.modName || !entry.namespace || !entry.displayName) {
-      window.LF.toast("Please complete the Basics step before saving.", "warn");
-      goToStep(1);
-      return;
-    }
+  function validateProject() {
+    project.modName = document.getElementById("wsModName").value.trim();
+    project.namespace = window.LF.sanitizeIdPart(document.getElementById("wsNamespace").value);
+    if (!project.modName) { window.LF.toast("Please give your mod a name.", "warn"); return false; }
+    if (!project.namespace) { window.LF.toast("Please enter a namespace (e.g. \"mod\" or your own prefix).", "warn"); return false; }
+    if (!project.entries.length) { window.LF.toast("Add at least one entry before saving.", "warn"); return false; }
+    return true;
+  }
+
+  function saveMod(thenOpenPublish) {
+    if (!validateProject()) return;
 
     const uid = window.LF.currentUser.uid;
     const displayName = window.LF.currentProfile ? window.LF.currentProfile.displayName : "Builder";
     const lensText = buildLensFileText();
 
-    const btn = document.getElementById("editorNextBtn");
-    const saveDraftBtn = document.getElementById("editorSaveDraftBtn");
-    btn.disabled = true; saveDraftBtn.disabled = true;
+    const saveDraftBtn = document.getElementById("wsSaveDraftBtn");
+    const publishBtn = document.getElementById("wsPublishBtn");
+    saveDraftBtn.disabled = true; publishBtn.disabled = true;
 
     const modsRef = window.LF.db.collection("mods");
-    const modDocRef = entry.draftId ? modsRef.doc(entry.draftId) : modsRef.doc();
-    entry.draftId = modDocRef.id;
+    const modDocRef = project.draftId ? modsRef.doc(project.draftId) : modsRef.doc();
+    project.draftId = modDocRef.id;
+
+    const primaryCategory = (function () {
+      const first = project.entries.find(function (e) { return e.kind === "block" || e.kind === "item"; });
+      return first ? first.category : "other";
+    })();
 
     const modPayload = {
       ownerId: uid,
       ownerName: displayName,
-      name: entry.modName,
-      namespace: entry.namespace,
-      category: entry.category,
-      shortDesc: entry.shortDesc,
+      name: project.modName,
+      namespace: project.namespace,
+      category: primaryCategory,
+      shortDesc: project.entries[0] ? (project.entries[0].description || "") : "",
       status: "draft",
       downloads: 0,
       likes: 0,
@@ -2443,20 +2985,23 @@ a:focus-visible, button:focus-visible, input:focus-visible, textarea:focus-visib
       .then(function () {
         return modDocRef.collection("files").add({
           version: "1.0",
-          notes: "Initial draft save.",
+          notes: "Workspace save — " + project.entries.length + " entr" + (project.entries.length === 1 ? "y" : "ies") + ".",
           lensContent: lensText,
-          fileName: entry.namespace + "_" + window.LF.sanitizeIdPart(entry.displayName),
+          fileName: project.namespace + "_modpack",
           downloads: 0,
           createdAt: firebase.firestore.FieldValue.serverTimestamp()
         });
       })
       .then(function () {
+        project.entries.forEach(function (e) { e.unsaved = false; });
+        markSaved();
+        renderSidebar();
         window.LF.toast("Mod saved to My Mods as a draft.", "ok");
-        closeEditor();
         if (thenOpenPublish && window.LF.openPublishModal) {
-          window.LF.openPublishModal(entry.draftId, entry.modName);
+          closeWorkspace();
+          window.LF.openPublishModal(project.draftId, project.modName);
         } else {
-          window.LF.navigate("/my-mods");
+          document.dispatchEvent(new CustomEvent("lf:mods:refresh"));
         }
       })
       .catch(function (err) {
@@ -2464,11 +3009,30 @@ a:focus-visible, button:focus-visible, input:focus-visible, textarea:focus-visib
         window.LF.toast("Couldn't save mod: " + err.message, "error");
       })
       .finally(function () {
-        btn.disabled = false; saveDraftBtn.disabled = false;
+        saveDraftBtn.disabled = false; publishBtn.disabled = false;
       });
   }
 
-  window.LF.buildLensFileText = buildLensFileText;
+  document.getElementById("wsSaveDraftBtn").addEventListener("click", function () { saveMod(false); });
+  document.getElementById("wsPublishBtn").addEventListener("click", function () { saveMod(true); });
+
+  document.getElementById("wsExportBtn").addEventListener("click", function () {
+    if (!validateProject()) return;
+    const text = buildLensFileText();
+    const blob = new Blob([text], { type: "application/octet-stream" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = (project.namespace || "mod") + ".lens";
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
+    setTimeout(function () { URL.revokeObjectURL(url); }, 1000);
+    window.LF.toast("Exported " + a.download, "ok");
+  });
+
+  document.getElementById("createModBtn").addEventListener("click", function () { window.LF.openEditor(); });
+  document.getElementById("myModsCreateBtn") && document.getElementById("myModsCreateBtn").addEventListener("click", function () { window.LF.openEditor(); });
 })();
 </script>
 <script>
