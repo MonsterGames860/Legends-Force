@@ -235,7 +235,7 @@ a:focus-visible, button:focus-visible, input:focus-visible, textarea:focus-visib
   padding:8px;
   opacity:0; visibility:hidden; transform: translateY(-6px);
   transition: opacity .15s ease, transform .15s ease, visibility .15s;
-  z-index:300;
+  z-index:2000;
 }
 .lf-dropdown.open{ opacity:1; visibility:visible; transform:translateY(0); }
 .lf-dropdown-header{ padding:10px 12px 8px; border-bottom:1px solid var(--border-soft); margin-bottom:6px; }
@@ -1909,8 +1909,25 @@ a:focus-visible, button:focus-visible, input:focus-visible, textarea:focus-visib
     profileDropdown.classList.remove("open");
     if (!window.LF.currentUser) { openAuthModal("signin"); return; }
     const uname = window.LF.currentProfile && window.LF.currentProfile.username;
-    if (uname) navigate("/@" + uname);
-    else navigate("/mymods"); // fallback while username is still provisioning
+    if (uname) {
+      navigate("/@" + uname);
+      return;
+    }
+    // Username is still being provisioned (first login only) — wait briefly
+    // and retry rather than silently bouncing to My Mods.
+    showToast("Setting up your profile…", "info");
+    let attempts = 0;
+    const poll = setInterval(function () {
+      attempts += 1;
+      const u = window.LF.currentProfile && window.LF.currentProfile.username;
+      if (u) {
+        clearInterval(poll);
+        navigate("/@" + u);
+      } else if (attempts > 20) { // ~6s
+        clearInterval(poll);
+        showToast("Couldn't load your profile yet — please try again.", "warn");
+      }
+    }, 300);
   });
 
   // ------------------------------------------------------------
@@ -2672,6 +2689,11 @@ a:focus-visible, button:focus-visible, input:focus-visible, textarea:focus-visib
   function closeWorkspace() {
     overlay.classList.remove("open");
     document.body.style.overflow = "";
+    // If the URL is still on /createmod (i.e. we weren't redirected
+    // elsewhere by a save/publish), bounce back to Browse.
+    if (window.location.pathname === "/createmod" && window.LF.navigate) {
+      window.LF.navigate("/browse");
+    }
   }
   document.getElementById("wsCloseBtn").addEventListener("click", function () {
     closeWorkspace();
@@ -3377,8 +3399,16 @@ a:focus-visible, button:focus-visible, input:focus-visible, textarea:focus-visib
     window.LF.toast("Exported " + a.download, "ok");
   });
 
-  document.getElementById("createModBtn").addEventListener("click", function () { window.LF.openEditor(); });
-  document.getElementById("myModsCreateBtn") && document.getElementById("myModsCreateBtn").addEventListener("click", function () { window.LF.openEditor(); });
+  document.getElementById("createModBtn").addEventListener("click", function () {
+    if (!window.LF.currentUser) { window.LF.openEditor(); return; } // triggers auth modal, URL stays put
+    window.LF.navigate("/createmod");
+    window.LF.openEditor();
+  });
+  document.getElementById("myModsCreateBtn") && document.getElementById("myModsCreateBtn").addEventListener("click", function () {
+    if (!window.LF.currentUser) { window.LF.openEditor(); return; }
+    window.LF.navigate("/createmod");
+    window.LF.openEditor();
+  });
 })();
 </script>
 <script>
