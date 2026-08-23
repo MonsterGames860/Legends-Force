@@ -1150,7 +1150,11 @@ a:focus-visible, button:focus-visible, input:focus-visible, textarea:focus-visib
       <div class="lf-container" style="padding-top:32px; padding-bottom:60px;">
         <div style="display:flex; align-items:center; justify-content:space-between; flex-wrap:wrap; gap:12px; margin-bottom:22px;">
           <h1 style="font-family:var(--font-display); font-size:24px; color:#fff;">My Mods</h1>
-          <button class="lf-btn lf-btn-primary" id="myModsCreateBtn">➕ Create Mod</button>
+          <div style="display:flex; gap:10px; flex-wrap:wrap;">
+            <button class="lf-btn lf-btn-ghost" id="myModsUploadBtn">⬆ Upload .lens File</button>
+            <input type="file" id="lensUploadInput" accept=".lens" style="display:none;">
+            <button class="lf-btn lf-btn-primary" id="myModsCreateBtn">➕ Create Mod</button>
+          </div>
         </div>
         <div class="lf-mymods-tabs">
           <button class="lf-mymods-tab active" data-status="all">All</button>
@@ -3244,9 +3248,10 @@ a:focus-visible, button:focus-visible, input:focus-visible, textarea:focus-visib
   // SAVE DRAFT / EXPORT / PUBLISH
   // ------------------------------------------------------------
   function validateProject() {
-    project.modName = document.getElementById("wsModName").value.trim();
+    const nameInputEl = document.getElementById("wsModName");
+    project.modName = nameInputEl.value.trim() || nameInputEl.placeholder || "Untitled Mod";
+    nameInputEl.value = project.modName;
     project.namespace = window.LF.sanitizeIdPart(document.getElementById("wsNamespace").value);
-    if (!project.modName) { window.LF.toast("Please give your mod a name.", "warn"); return false; }
     if (!project.namespace) { window.LF.toast("Please enter a namespace (e.g. \"mod\" or your own prefix).", "warn"); return false; }
     if (!project.entries.length) { window.LF.toast("Add at least one entry before saving.", "warn"); return false; }
     return true;
@@ -3490,6 +3495,96 @@ a:focus-visible, button:focus-visible, input:focus-visible, textarea:focus-visib
 
   window.addEventListener("lf:route:mymods", fetchMyMods);
   document.addEventListener("lf:mods:refresh", fetchMyMods);
+
+  // ------------------------------------------------------------
+  // UPLOAD EXISTING .lens FILE
+  // ------------------------------------------------------------
+  const lensUploadInput = document.getElementById("lensUploadInput");
+  const myModsUploadBtn = document.getElementById("myModsUploadBtn");
+
+  if (myModsUploadBtn && lensUploadInput) {
+    myModsUploadBtn.addEventListener("click", function () {
+      if (!window.LF.requireAuth("Uploading a mod")) return;
+      lensUploadInput.value = "";
+      lensUploadInput.click();
+    });
+
+    lensUploadInput.addEventListener("change", function (e) {
+      const file = e.target.files && e.target.files[0];
+      if (!file) return;
+      if (!file.name.toLowerCase().endsWith(".lens")) {
+        window.LF.toast("Please choose a .lens file.", "warn");
+        return;
+      }
+
+      myModsUploadBtn.disabled = true;
+      const originalLabel = myModsUploadBtn.textContent;
+      myModsUploadBtn.textContent = "Uploading…";
+
+      const reader = new FileReader();
+      reader.onerror = function () {
+        window.LF.toast("Couldn't read that file.", "error");
+        myModsUploadBtn.disabled = false;
+        myModsUploadBtn.textContent = originalLabel;
+      };
+      reader.onload = function () {
+        const lensText = reader.result;
+        const uid = window.LF.currentUser.uid;
+        const displayName = window.LF.currentProfile ? window.LF.currentProfile.displayName : "Builder";
+        const baseName = file.name.replace(/\.lens$/i, "");
+        const modName = baseName || "Uploaded Mod";
+        const namespace = window.LF.sanitizeIdPart(baseName) || "mod";
+
+        const modsRef = window.LF.db.collection("mods");
+        const modDocRef = modsRef.doc();
+        const modId = modDocRef.id;
+        const desiredSlug = window.LF.sanitizeIdPart(baseName).replace(/_/g, "-") || "mod";
+        const slugRef = window.LF.db.collection("modSlugs").doc(desiredSlug);
+
+        window.LF.db.runTransaction(function (tx) {
+          return tx.get(slugRef).then(function (doc) {
+            if (doc.exists) {
+              throw new Error("The name \"" + desiredSlug + "\" is already taken. Rename the file and try again.");
+            }
+            tx.set(slugRef, { modId: modId, reservedAt: firebase.firestore.FieldValue.serverTimestamp() });
+            tx.set(modDocRef, {
+              ownerId: uid,
+              ownerName: displayName,
+              name: modName,
+              slug: desiredSlug,
+              namespace: namespace,
+              category: "other",
+              shortDesc: "Uploaded .lens mod.",
+              status: "draft",
+              downloads: 0,
+              likes: 0,
+              updatedAt: firebase.firestore.FieldValue.serverTimestamp(),
+              createdAt: firebase.firestore.FieldValue.serverTimestamp()
+            });
+          });
+        }).then(function () {
+          return modDocRef.collection("files").add({
+            version: "1.0",
+            notes: "Uploaded from " + file.name,
+            lensContent: lensText,
+            fileName: baseName,
+            downloads: 0,
+            createdAt: firebase.firestore.FieldValue.serverTimestamp()
+          });
+        }).then(function () {
+          window.LF.toast("Mod uploaded to My Mods as a draft.", "ok");
+          fetchMyMods();
+        }).catch(function (err) {
+          console.error(err);
+          window.LF.toast("Couldn't upload mod: " + err.message, "error");
+        }).finally(function () {
+          myModsUploadBtn.disabled = false;
+          myModsUploadBtn.textContent = originalLabel;
+        });
+      };
+      reader.readAsText(file);
+    });
+  }
 })();
 </script>
 
