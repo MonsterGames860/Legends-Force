@@ -258,6 +258,104 @@ a:focus-visible, button:focus-visible, input:focus-visible, textarea:focus-visib
 .lf-main{ flex:1; width:100%; }
 .lf-container{ max-width:1280px; margin:0 auto; padding:0 28px; }
 
+/* ============================================================
+   PROFILE VIEW
+   ============================================================ */
+.lf-profile-header{
+  position:relative;
+  padding:48px 0 28px;
+  display:flex; align-items:center; gap:24px; flex-wrap:wrap;
+}
+.lf-profile-avatar{
+  width:96px; height:96px; border-radius:50%;
+  background: linear-gradient(135deg, var(--lens-deep), var(--lens-violet));
+  border:2px solid var(--border-glow);
+  display:flex; align-items:center; justify-content:center;
+  font-weight:700; font-size:34px; color:#fff;
+  overflow:hidden; flex-shrink:0;
+  box-shadow: var(--shadow-glow-md);
+}
+.lf-profile-avatar img{ width:100%; height:100%; object-fit:cover; }
+.lf-profile-info{ flex:1; min-width:220px; }
+.lf-profile-info h1{
+  font-family: var(--font-display); font-size:26px; color:#fff;
+  display:flex; align-items:center; gap:10px; flex-wrap:wrap;
+}
+.lf-profile-handle{ color: var(--text-tertiary); font-size:14px; font-weight:600; margin-top:2px; }
+.lf-profile-bio{ color: var(--text-secondary); font-size:14px; margin-top:10px; max-width:560px; line-height:1.55; }
+.lf-profile-bio.empty{ color: var(--text-disabled); font-style:italic; }
+.lf-profile-stats{ display:flex; gap:22px; margin-top:14px; flex-wrap:wrap; }
+.lf-profile-stat{ display:flex; align-items:baseline; gap:6px; cursor:pointer; }
+.lf-profile-stat:hover .num{ color: var(--lens-cyan); }
+.lf-profile-stat .num{ font-weight:700; font-size:15px; color:#fff; transition:color .12s ease; }
+.lf-profile-stat .lbl{ font-size:12.5px; color: var(--text-tertiary); }
+.lf-profile-actions{ display:flex; gap:10px; flex-shrink:0; align-self:flex-start; margin-top:6px; }
+
+.lf-follow-btn{
+  padding:9px 18px; border-radius: var(--radius-md);
+  font-size:13.5px; font-weight:700; cursor:pointer;
+  border:1px solid var(--border-glow);
+  background: linear-gradient(135deg, var(--lens-deep), var(--lens-blue));
+  color:#fff; transition: transform .1s ease, opacity .12s ease;
+}
+.lf-follow-btn:hover{ opacity:.9; }
+.lf-follow-btn:active{ transform: scale(0.97); }
+.lf-follow-btn.following{
+  background: var(--bg-elevated); color: var(--text-secondary); border-color: var(--border-soft);
+}
+.lf-follow-btn.following:hover{ background: rgba(255,93,122,0.12); color:#ff8fa3; border-color: rgba(255,93,122,0.3); }
+.lf-follow-btn.following .lbl-default{ display:inline; }
+.lf-follow-btn.following .lbl-hover{ display:none; }
+.lf-follow-btn.following:hover .lbl-default{ display:none; }
+.lf-follow-btn.following:hover .lbl-hover{ display:inline; }
+
+.lf-bio-edit-wrap{ margin-top:10px; max-width:560px; }
+.lf-bio-edit-wrap textarea{
+  width:100%; min-height:70px; resize:vertical;
+  background: var(--bg-panel-2); border:1px solid var(--border-soft); border-radius: var(--radius-md);
+  color: var(--text-primary); font-family: var(--font-body); font-size:13.5px; padding:10px 12px;
+}
+.lf-bio-edit-wrap textarea:focus{ outline:none; border-color: var(--lens-cyan); }
+.lf-bio-edit-actions{ display:flex; gap:8px; margin-top:8px; }
+
+.lf-profile-tabs{
+  display:flex; gap:4px; border-bottom:1px solid var(--border-soft);
+  margin-top:8px; margin-bottom:24px;
+}
+.lf-profile-tab{
+  padding:12px 4px; margin-right:22px;
+  font-size:13.5px; font-weight:700; color: var(--text-tertiary);
+  background:none; border:none; border-bottom:2px solid transparent;
+  cursor:pointer; transition: color .12s ease, border-color .12s ease;
+}
+.lf-profile-tab:hover{ color: var(--text-primary); }
+.lf-profile-tab.active{ color: var(--lens-cyan); border-bottom-color: var(--lens-cyan); }
+
+.lf-people-list{ display:flex; flex-direction:column; gap:2px; }
+.lf-people-row{
+  display:flex; align-items:center; gap:14px;
+  padding:12px 6px; border-radius: var(--radius-md);
+  text-decoration:none; color:inherit;
+  transition: background .12s ease;
+}
+.lf-people-row:hover{ background: rgba(255,255,255,0.04); }
+.lf-people-avatar{
+  width:42px; height:42px; border-radius:50%; flex-shrink:0;
+  background: linear-gradient(135deg, var(--lens-deep), var(--lens-violet));
+  display:flex; align-items:center; justify-content:center;
+  font-weight:700; font-size:15px; color:#fff; overflow:hidden;
+}
+.lf-people-avatar img{ width:100%; height:100%; object-fit:cover; }
+.lf-people-info{ flex:1; min-width:0; }
+.lf-people-info .n{ font-weight:700; font-size:14px; color:#fff; }
+.lf-people-info .h{ font-size:12.5px; color: var(--text-tertiary); }
+
+@media (max-width: 640px){
+  .lf-profile-header{ flex-direction:column; align-items:flex-start; text-align:left; }
+  .lf-profile-actions{ align-self:stretch; }
+  .lf-profile-actions .lf-follow-btn{ flex:1; }
+}
+
 .lf-footer{
   border-top:1px solid var(--border-soft);
   padding:28px;
@@ -960,7 +1058,7 @@ a:focus-visible, button:focus-visible, input:focus-visible, textarea:focus-visib
        ============================================================ -->
   <header class="lf-header">
     <div class="lf-header-left">
-      <a href="#/" class="lf-brand" data-route="/">
+      <a href="/browse" class="lf-brand" data-route="/browse">
         <span class="lf-mark">
           <img src="logo-header.png" alt="LegendsForce logo — a glowing pixel-glass letter L" width="129" height="160">
         </span>
@@ -987,6 +1085,7 @@ a:focus-visible, button:focus-visible, input:focus-visible, textarea:focus-visib
             <div class="name" id="dropdownName">—</div>
             <div class="email" id="dropdownEmail">—</div>
           </div>
+          <button class="lf-dropdown-item" id="ddProfile" role="menuitem"><span class="ic">👤</span> Profile</button>
           <button class="lf-dropdown-item" id="ddBrowseMods" role="menuitem"><span class="ic">🧭</span> Browse Mods</button>
           <button class="lf-dropdown-item" id="ddCreateMod" role="menuitem"><span class="ic">➕</span> Create Mod</button>
           <button class="lf-dropdown-item" id="ddMyMods" role="menuitem"><span class="ic">📦</span> My Mods</button>
@@ -1060,6 +1159,13 @@ a:focus-visible, button:focus-visible, input:focus-visible, textarea:focus-visib
           <button class="lf-mymods-tab" data-status="published">Published</button>
         </div>
         <div id="myModsList"><!-- populated by JS --></div>
+      </div>
+    </section>
+
+    <!-- ---------- USER PROFILE VIEW ---------- -->
+    <section id="view-profile" class="lf-view" style="display:none;">
+      <div class="lf-container" id="profileContainer" style="padding-top:8px; padding-bottom:60px;">
+        <!-- populated by JS -->
       </div>
     </section>
 
@@ -1495,15 +1601,24 @@ a:focus-visible, button:focus-visible, input:focus-visible, textarea:focus-visib
   /* ============================================================
      FIRESTORE SCHEMA (mirrors play-legends rule shape)
      ------------------------------------------------------------
-     users/{uid}                     — { displayName, email, photoURL, createdAt }
+     users/{uid}                     — {
+                                          displayName, username (unique), bio,
+                                          email, photoURL,
+                                          followersCount, followingCount,
+                                          createdAt, updatedAt
+                                        }
+     usernames/{username}            — { uid }   (reservation lock for uniqueness)
+     users/{uid}/followers/{followerUid}   — { followedAt }  (who follows this user)
+     users/{uid}/following/{followeeUid}   — { followedAt }  (who this user follows)
      mods/{modId}                    — {
-                                          ownerId, ownerName, name, namespace,
+                                          ownerId, ownerName, name, namespace, slug (unique),
                                           category, shortDesc, description (html),
                                           iconURL, screenshots: [url,...],
                                           status: "draft" | "published",
                                           downloads, likes,
                                           createdAt, updatedAt
                                         }
+     modSlugs/{slug}                 — { modId }   (reservation lock for uniqueness)
      mods/{modId}/files/{fileId}     — {
                                           version, notes, lensDataURL / storagePath,
                                           createdAt, downloads
@@ -1558,6 +1673,32 @@ a:focus-visible, button:focus-visible, input:focus-visible, textarea:focus-visib
   window.LF.sanitizeIdPart = sanitizeIdPart;
 
   // ------------------------------------------------------------
+  // USERNAME RESERVATION
+  // ------------------------------------------------------------
+  // Profile URLs are unique per username (legendsforce.vercel.app/@username).
+  // A `usernames/{username}` doc acts as a reservation lock, same pattern
+  // as mod slugs. Auto-derived from displayName/email on first login,
+  // with -2, -3, ... appended on collision.
+  window.LF.reserveUsername = function (uid, seedName) {
+    const base = sanitizeIdPart(seedName).replace(/_/g, "") || "builder";
+    return db.runTransaction(function (tx) {
+      function tryCandidate(n) {
+        const candidate = n === 1 ? base : base + n;
+        const ref = db.collection("usernames").doc(candidate);
+        return tx.get(ref).then(function (doc) {
+          if (!doc.exists || doc.data().uid === uid) return { ref: ref, username: candidate };
+          if (n > 200) throw new Error("Couldn't reserve a username.");
+          return tryCandidate(n + 1);
+        });
+      }
+      return tryCandidate(1).then(function (result) {
+        tx.set(result.ref, { uid: uid, reservedAt: firebase.firestore.FieldValue.serverTimestamp() });
+        return result.username;
+      });
+    });
+  };
+
+  // ------------------------------------------------------------
   // AUTH STATE
   // ------------------------------------------------------------
   auth.onAuthStateChanged(function (user) {
@@ -1581,17 +1722,43 @@ a:focus-visible, button:focus-visible, input:focus-visible, textarea:focus-visib
         document.getElementById("avatarInitial").style.display = "none";
       }
 
-      // Ensure users/{uid} doc exists
-      db.collection("users").doc(user.uid).set({
-        displayName: user.displayName || (user.email ? user.email.split("@")[0] : "Builder"),
-        email: user.email || "",
-        photoURL: user.photoURL || "",
-        updatedAt: firebase.firestore.FieldValue.serverTimestamp()
-      }, { merge: true }).catch(function (e) { console.warn("profile sync failed", e); });
+      const userRef = db.collection("users").doc(user.uid);
+      const displayName = user.displayName || (user.email ? user.email.split("@")[0] : "Builder");
 
-      window.LF.currentProfile = {
-        displayName: user.displayName || (user.email ? user.email.split("@")[0] : "Builder")
-      };
+      // Ensure users/{uid} doc exists, and ensure it has a reserved, unique
+      // username (auto-derived once, then left alone on future logins).
+      userRef.get().then(function (existing) {
+        const data = existing.exists ? existing.data() : {};
+        const baseUpdate = {
+          displayName: displayName,
+          email: user.email || "",
+          photoURL: user.photoURL || "",
+          updatedAt: firebase.firestore.FieldValue.serverTimestamp()
+        };
+
+        window.LF.currentProfile = {
+          displayName: displayName,
+          username: data.username || null,
+          bio: data.bio || ""
+        };
+
+        if (data.username) {
+          userRef.set(baseUpdate, { merge: true }).catch(function (e) { console.warn("profile sync failed", e); });
+          return;
+        }
+
+        // First login (or pre-username account): reserve a username.
+        window.LF.reserveUsername(user.uid, displayName).then(function (username) {
+          window.LF.currentProfile.username = username;
+          return userRef.set(Object.assign({}, baseUpdate, {
+            username: username,
+            bio: data.bio || "",
+            followersCount: data.followersCount || 0,
+            followingCount: data.followingCount || 0,
+            createdAt: existing.exists && data.createdAt ? data.createdAt : firebase.firestore.FieldValue.serverTimestamp()
+          }), { merge: true });
+        }).catch(function (e) { console.warn("username reservation failed", e); });
+      }).catch(function (e) { console.warn("profile load failed", e); });
     } else {
       profileMenu.style.display = "none";
       signInBtn.style.display = "inline-flex";
@@ -1727,64 +1894,160 @@ a:focus-visible, button:focus-visible, input:focus-visible, textarea:focus-visib
   });
   document.getElementById("ddCreateMod").addEventListener("click", function () {
     profileDropdown.classList.remove("open");
+    navigate("/createmod");
     window.LF.openEditor();
   });
   document.getElementById("ddMyMods").addEventListener("click", function () {
     profileDropdown.classList.remove("open");
-    navigate("/my-mods");
+    navigate("/mymods");
   });
   document.getElementById("ddBrowseMods").addEventListener("click", function () {
     profileDropdown.classList.remove("open");
-    navigate("/");
+    navigate("/browse");
+  });
+  document.getElementById("ddProfile").addEventListener("click", function () {
+    profileDropdown.classList.remove("open");
+    if (!window.LF.currentUser) { openAuthModal("signin"); return; }
+    const uname = window.LF.currentProfile && window.LF.currentProfile.username;
+    if (uname) navigate("/@" + uname);
+    else navigate("/mymods"); // fallback while username is still provisioning
   });
 
   // ------------------------------------------------------------
-  // ROUTER (hash-based, simple)
+  // ROUTER (path-based, History API)
   // ------------------------------------------------------------
-  const views = {
+  // Route table (static paths):
+  //   /browse                → view-home
+  //   /mymods                → view-mymods
+  //   /createmod              → opens the mod workspace over view-home
+  //   /@username              → view-profile (by username)
+  //   /@username/followers    → view-profile (followers tab)
+  //   /@username/following    → view-profile (following tab)
+  //   /:modSlug                → view-detail (description tab)
+  //   /:modSlug/files          → view-detail (files tab)
+  //   /:modSlug/comments       → view-detail (comments tab)
+  // Legacy support: '#/mod/{id}' and '#/my-mods' still resolve (old links/bookmarks).
+  const STATIC_VIEWS = {
+    "/browse": "view-home",
     "/": "view-home",
+    "/mymods": "view-mymods",
     "/my-mods": "view-mymods"
   };
+  const RESERVED_SLUGS = ["browse", "mymods", "my-mods", "createmod", "mod"];
 
   function navigate(path) {
-    window.location.hash = "#" + path;
+    if (window.location.pathname + window.location.search === path && !window.location.hash) return;
+    window.history.pushState(null, "", path);
+    renderRoute();
   }
   window.LF.navigate = navigate;
 
-  function renderRoute() {
-    const hash = window.location.hash.replace(/^#/, "") || "/";
+  function allViewIds() {
+    return ["view-home", "view-mymods", "view-detail", "view-profile"];
+  }
 
-    // Mod detail route: /mod/{id}
-    const modMatch = hash.match(/^\/mod\/([^/]+)$/);
-
-    Object.values(views).forEach(function (id) {
-      document.getElementById(id).style.display = "none";
+  function showView(id) {
+    allViewIds().forEach(function (v) {
+      document.getElementById(v).style.display = (v === id) ? "block" : "none";
     });
-    document.getElementById("view-detail").style.display = "none";
+    window.scrollTo(0, 0);
+  }
 
+  function legacyHashRedirect() {
+    // Translate old '#/...' links to real paths, once, then drop the hash.
+    const hash = window.location.hash.replace(/^#/, "");
+    if (!hash) return false;
+    let target = null;
+    const modMatch = hash.match(/^\/mod\/([^/]+)$/);
     if (modMatch) {
-      document.getElementById("view-detail").style.display = "block";
-      window.dispatchEvent(new CustomEvent("lf:route:detail", { detail: { modId: modMatch[1] } }));
-      window.scrollTo(0, 0);
+      target = "/mod-id/" + modMatch[1]; // resolved by id below
+    } else if (hash === "/my-mods") {
+      target = "/mymods";
+    } else if (hash === "/" || hash === "") {
+      target = "/browse";
+    }
+    if (target) {
+      window.history.replaceState(null, "", target);
+      return true;
+    }
+    window.history.replaceState(null, "", "/browse");
+    return true;
+  }
+
+  function renderRoute() {
+    if (window.location.hash) legacyHashRedirect();
+
+    let path = window.location.pathname.replace(/\/+$/, "") || "/";
+    if (path === "") path = "/";
+
+    // Resolve-by-id fallback coming from a legacy '#/mod/{id}' link.
+    const idMatch = path.match(/^\/mod-id\/([^/]+)$/);
+    if (idMatch) {
+      window.LF.resolveModIdToSlug(idMatch[1]).then(function (slug) {
+        window.history.replaceState(null, "", slug ? "/" + slug : "/browse");
+        renderRoute();
+      });
       return;
     }
 
-    const viewId = views[hash] || "view-home";
-    document.getElementById(viewId).style.display = "block";
-    window.scrollTo(0, 0);
-
-    if (viewId === "view-home") window.dispatchEvent(new CustomEvent("lf:route:home"));
-    if (viewId === "view-mymods") {
-      if (!window.LF.currentUser) {
-        showToast("Sign in to view your mods.", "warn");
-        navigate("/");
-        openAuthModal("signin");
-        return;
+    // Static views
+    if (STATIC_VIEWS[path]) {
+      const viewId = STATIC_VIEWS[path];
+      showView(viewId);
+      if (viewId === "view-home") window.dispatchEvent(new CustomEvent("lf:route:home"));
+      if (viewId === "view-mymods") {
+        if (!window.LF.currentUser) {
+          showToast("Sign in to view your mods.", "warn");
+          navigate("/browse");
+          openAuthModal("signin");
+          return;
+        }
+        window.dispatchEvent(new CustomEvent("lf:route:mymods"));
       }
-      window.dispatchEvent(new CustomEvent("lf:route:mymods"));
+      return;
     }
+
+    if (path === "/createmod") {
+      showView("view-home");
+      window.dispatchEvent(new CustomEvent("lf:route:home"));
+      window.LF.openEditor();
+      return;
+    }
+
+    // Profile routes: /@username or /@username/followers or /@username/following
+    const profileMatch = path.match(/^\/@([^/]+)(?:\/(followers|following))?$/);
+    if (profileMatch) {
+      showView("view-profile");
+      window.dispatchEvent(new CustomEvent("lf:route:profile", {
+        detail: { username: profileMatch[1], tab: profileMatch[2] || "mods" }
+      }));
+      return;
+    }
+
+    // Mod routes: /:slug or /:slug/files or /:slug/comments
+    const modSlugMatch = path.match(/^\/([^/@][^/]*)(?:\/(files|comments|description))?$/);
+    if (modSlugMatch && RESERVED_SLUGS.indexOf(modSlugMatch[1].toLowerCase()) === -1) {
+      showView("view-detail");
+      window.dispatchEvent(new CustomEvent("lf:route:detail", {
+        detail: { slug: modSlugMatch[1], tab: modSlugMatch[2] || "description" }
+      }));
+      return;
+    }
+
+    // Fallback
+    navigate("/browse");
   }
-  window.addEventListener("hashchange", renderRoute);
+
+  window.addEventListener("popstate", renderRoute);
+  document.addEventListener("click", function (e) {
+    // Intercept clicks on internal links so we use pushState instead of a full reload.
+    const a = e.target.closest("a[href]");
+    if (!a) return;
+    const href = a.getAttribute("href");
+    if (!href || href.charAt(0) !== "/" || a.target === "_blank") return;
+    e.preventDefault();
+    navigate(href);
+  });
   document.addEventListener("DOMContentLoaded", renderRoute);
   if (document.readyState !== "loading") renderRoute();
 
@@ -1887,7 +2150,7 @@ a:focus-visible, button:focus-visible, input:focus-visible, textarea:focus-visib
       : '<div class="fallback-icon">📦</div>';
     const catLabel = CATEGORY_LABELS[mod.category] || "✨ Other";
     return (
-      '<a href="#/mod/' + mod.id + '" class="lf-mod-card" data-mod-id="' + mod.id + '">' +
+      '<a href="/' + window.LF.escapeHTML(mod.slug || mod.id) + '" class="lf-mod-card" data-mod-id="' + mod.id + '">' +
         '<div class="lf-mod-card-media">' + icon + '<span class="lf-mod-card-cat">' + catLabel + '</span></div>' +
         '<div class="lf-mod-card-body">' +
           '<div class="lf-mod-card-title">' + window.LF.escapeHTML(mod.name) + '</div>' +
@@ -2161,12 +2424,20 @@ a:focus-visible, button:focus-visible, input:focus-visible, textarea:focus-visib
       });
   }
 
-  function switchTab(tab, mod, modId) {
+  function switchTab(tab, mod, modId, skipUrlUpdate) {
     currentTab = tab;
     document.querySelectorAll(".lf-tab").forEach(function (t) { t.classList.toggle("active", t.dataset.tab === tab); });
     if (tab === "description") renderDescriptionTab(mod);
     else if (tab === "files") renderFilesTab(modId);
     else if (tab === "comments") renderCommentsTab(modId);
+
+    if (!skipUrlUpdate && mod.slug) {
+      const base = "/" + mod.slug;
+      const path = tab === "description" ? base : base + "/" + tab;
+      if (window.location.pathname !== path) {
+        window.history.replaceState(null, "", path);
+      }
+    }
   }
 
   // ------------------------------------------------------------
@@ -2234,37 +2505,48 @@ a:focus-visible, button:focus-visible, input:focus-visible, textarea:focus-visib
     }).catch(function (err) { window.LF.toast("Couldn't update like: " + err.message, "error"); });
   }
 
-  function loadModDetail(modId) {
-    currentModId = modId;
+  function renderModDoc(doc, initialTab) {
+    const mod = Object.assign({ id: doc.id }, doc.data());
+    currentModId = doc.id;
+    currentModData = mod;
+    document.getElementById("detailContainer").innerHTML = detailShell(mod);
+    switchTab(initialTab || "description", mod, mod.id, true);
+
+    document.querySelectorAll(".lf-tab").forEach(function (t) {
+      t.addEventListener("click", function () { switchTab(t.dataset.tab, mod, mod.id); });
+    });
+    document.getElementById("downloadLatestBtn").addEventListener("click", function () { downloadLatest(mod.id); });
+    document.getElementById("likeBtn").addEventListener("click", function () { toggleLike(mod.id); });
+
+    if (window.LF.currentUser) {
+      window.LF.db.collection("mods").doc(mod.id).collection("likes").doc(window.LF.currentUser.uid).get()
+        .then(function (d) { if (d.exists) document.getElementById("likeBtn").textContent = "❤ Liked"; });
+    }
+  }
+
+  function loadModDetailBySlug(slug, tab) {
     document.getElementById("detailContainer").innerHTML = '<div class="lf-loading-fill" style="padding:100px 0;"><span class="lf-spinner" style="border-top-color:var(--lens-cyan); border-color:var(--border-soft);"></span> Loading mod…</div>';
 
-    window.LF.db.collection("mods").doc(modId).get().then(function (doc) {
-      if (!doc.exists) {
+    window.LF.db.collection("mods").where("slug", "==", slug).limit(1).get().then(function (snap) {
+      if (snap.empty) {
         document.getElementById("detailContainer").innerHTML = '<div class="lf-empty-state" style="padding:100px 0;"><div class="ic">❓</div><h3>Mod not found</h3><p>It may have been removed or unpublished.</p></div>';
         return;
       }
-      const mod = Object.assign({ id: doc.id }, doc.data());
-      currentModData = mod;
-      document.getElementById("detailContainer").innerHTML = detailShell(mod);
-      switchTab("description", mod, modId);
-
-      document.querySelectorAll(".lf-tab").forEach(function (t) {
-        t.addEventListener("click", function () { switchTab(t.dataset.tab, mod, modId); });
-      });
-      document.getElementById("downloadLatestBtn").addEventListener("click", function () { downloadLatest(modId); });
-      document.getElementById("likeBtn").addEventListener("click", function () { toggleLike(modId); });
-
-      if (window.LF.currentUser) {
-        window.LF.db.collection("mods").doc(modId).collection("likes").doc(window.LF.currentUser.uid).get()
-          .then(function (d) { if (d.exists) document.getElementById("likeBtn").textContent = "❤ Liked"; });
-      }
+      renderModDoc(snap.docs[0], tab);
     }).catch(function (err) {
       console.error(err);
       document.getElementById("detailContainer").innerHTML = '<div class="lf-empty-state" style="padding:100px 0;"><div class="ic">⚠️</div><h3>Couldn\'t load mod</h3></div>';
     });
   }
 
-  window.addEventListener("lf:route:detail", function (e) { loadModDetail(e.detail.modId); });
+  // Resolve a legacy mod id (old '#/mod/{id}' bookmarks) to its current slug.
+  window.LF.resolveModIdToSlug = function (modId) {
+    return window.LF.db.collection("mods").doc(modId).get().then(function (doc) {
+      return doc.exists ? (doc.data().slug || null) : null;
+    }).catch(function () { return null; });
+  };
+
+  window.addEventListener("lf:route:detail", function (e) { loadModDetailBySlug(e.detail.slug, e.detail.tab); });
 
   document.getElementById("lightboxOverlay").addEventListener("click", function (e) {
     if (e.target === this) this.classList.remove("open");
@@ -2305,6 +2587,8 @@ a:focus-visible, button:focus-visible, input:focus-visible, textarea:focus-visib
     draftId: null,
     modName: "",
     namespace: "",
+    lastSavedName: null,   // name as of the last successful save (for slug diffing)
+    lastSavedSlug: null,   // current reserved slug, if any
     entries: [] // { localId, kind, ...fields, unsaved }
   };
   let selectedLocalId = null;
@@ -2376,7 +2660,7 @@ a:focus-visible, button:focus-visible, input:focus-visible, textarea:focus-visib
   };
 
   function resetProject() {
-    project = { draftId: null, modName: "", namespace: "", entries: [] };
+    project = { draftId: null, modName: "", namespace: "", lastSavedName: null, lastSavedSlug: null, entries: [] };
     selectedLocalId = null;
     document.getElementById("wsModName").value = "";
     document.getElementById("wsNamespace").value = "";
@@ -2947,6 +3231,49 @@ a:focus-visible, button:focus-visible, input:focus-visible, textarea:focus-visib
     return true;
   }
 
+  // ------------------------------------------------------------
+  // SLUG RESERVATION
+  // ------------------------------------------------------------
+  // Mod URLs are unique per slug (legendsforce.vercel.app/{slug}).
+  // A `modSlugs/{slug}` doc acts as a reservation lock so two mods
+  // (even from different owners, or the same owner) can never
+  // collide on the same name. If the mod's name hasn't changed
+  // since its last save, its existing slug is kept as-is.
+  //
+  // Name collisions are a hard block, not auto-resolved: if the
+  // desired slug is already taken by a *different* mod, saving
+  // fails with a SlugTakenError and the user must pick another name.
+  function slugify(name) {
+    return window.LF.sanitizeIdPart(name).replace(/_/g, "-") || "mod";
+  }
+
+  function SlugTakenError(slug) {
+    this.name = "SlugTakenError";
+    this.slug = slug;
+    this.message = "The mod name \"" + slug + "\" is already taken. Please choose a different name.";
+  }
+  SlugTakenError.prototype = Object.create(Error.prototype);
+
+  // Reserves `desiredSlug` for `modId`, freeing `previousSlug` (if any and
+  // if different). Throws SlugTakenError if the name is already owned by
+  // a different mod. Returns the reserved slug on success.
+  function reserveSlug(modId, desiredSlug, previousSlug) {
+    const db = window.LF.db;
+    return db.runTransaction(function (tx) {
+      const ref = db.collection("modSlugs").doc(desiredSlug);
+      return tx.get(ref).then(function (doc) {
+        if (doc.exists && doc.data().modId !== modId) {
+          throw new SlugTakenError(desiredSlug);
+        }
+        tx.set(ref, { modId: modId, reservedAt: firebase.firestore.FieldValue.serverTimestamp() });
+        if (previousSlug && previousSlug !== desiredSlug) {
+          tx.delete(db.collection("modSlugs").doc(previousSlug));
+        }
+        return desiredSlug;
+      });
+    });
+  }
+
   function saveMod(thenOpenPublish) {
     if (!validateProject()) return;
 
@@ -2961,27 +3288,40 @@ a:focus-visible, button:focus-visible, input:focus-visible, textarea:focus-visib
     const modsRef = window.LF.db.collection("mods");
     const modDocRef = project.draftId ? modsRef.doc(project.draftId) : modsRef.doc();
     project.draftId = modDocRef.id;
+    const modId = modDocRef.id;
 
     const primaryCategory = (function () {
       const first = project.entries.find(function (e) { return e.kind === "block" || e.kind === "item"; });
       return first ? first.category : "other";
     })();
 
-    const modPayload = {
-      ownerId: uid,
-      ownerName: displayName,
-      name: project.modName,
-      namespace: project.namespace,
-      category: primaryCategory,
-      shortDesc: project.entries[0] ? (project.entries[0].description || "") : "",
-      status: "draft",
-      downloads: 0,
-      likes: 0,
-      updatedAt: firebase.firestore.FieldValue.serverTimestamp(),
-      createdAt: firebase.firestore.FieldValue.serverTimestamp()
-    };
+    // Only re-slug if the name actually changed (or this is a brand-new mod).
+    const nameChanged = project.modName !== project.lastSavedName;
+    const slugStep = nameChanged
+      ? reserveSlug(modId, slugify(project.modName), project.lastSavedSlug)
+      : Promise.resolve(project.lastSavedSlug);
 
-    modDocRef.set(modPayload, { merge: true })
+    slugStep.then(function (finalSlug) {
+      project.lastSavedName = project.modName;
+      project.lastSavedSlug = finalSlug;
+
+      const modPayload = {
+        ownerId: uid,
+        ownerName: displayName,
+        name: project.modName,
+        slug: finalSlug,
+        namespace: project.namespace,
+        category: primaryCategory,
+        shortDesc: project.entries[0] ? (project.entries[0].description || "") : "",
+        status: "draft",
+        downloads: 0,
+        likes: 0,
+        updatedAt: firebase.firestore.FieldValue.serverTimestamp(),
+        createdAt: firebase.firestore.FieldValue.serverTimestamp()
+      };
+
+      return modDocRef.set(modPayload, { merge: true });
+    })
       .then(function () {
         return modDocRef.collection("files").add({
           version: "1.0",
@@ -3006,7 +3346,13 @@ a:focus-visible, button:focus-visible, input:focus-visible, textarea:focus-visib
       })
       .catch(function (err) {
         console.error(err);
-        window.LF.toast("Couldn't save mod: " + err.message, "error");
+        if (err.name === "SlugTakenError") {
+          window.LF.toast(err.message, "warn");
+          const nameInput = document.getElementById("wsModName");
+          if (nameInput) { nameInput.focus(); nameInput.select(); }
+        } else {
+          window.LF.toast("Couldn't save mod: " + err.message, "error");
+        }
       })
       .finally(function () {
         saveDraftBtn.disabled = false; publishBtn.disabled = false;
@@ -3056,7 +3402,7 @@ a:focus-visible, button:focus-visible, input:focus-visible, textarea:focus-visib
           '<div class="m">' + (mod.category || "other") + ' · Updated ' + window.LF.timeAgo(mod.updatedAt || mod.createdAt) + ' · ⬇ ' + window.LF.fmtCount(mod.downloads) + '</div>' +
         '</div>' +
         '<div class="actions">' +
-          (mod.status === "published" ? '<a href="#/mod/' + mod.id + '" class="lf-btn lf-btn-sm lf-btn-ghost">View</a>' : '') +
+          (mod.status === "published" ? '<a href="/' + window.LF.escapeHTML(mod.slug || mod.id) + '" class="lf-btn lf-btn-sm lf-btn-ghost">View</a>' : '') +
           (mod.status === "draft" ? '<button class="lf-btn lf-btn-sm lf-btn-primary publish-mod-btn" data-mod-id="' + mod.id + '" data-mod-name="' + window.LF.escapeHTML(mod.name) + '">🚀 Publish</button>' : '') +
           '<button class="lf-btn lf-btn-sm lf-btn-danger delete-mod-btn" data-mod-id="' + mod.id + '">🗑</button>' +
         '</div>' +
@@ -3239,7 +3585,10 @@ a:focus-visible, button:focus-visible, input:focus-visible, textarea:focus-visib
       window.LF.toast("Mod published! 🎉", "ok");
       closePublish();
       document.dispatchEvent(new CustomEvent("lf:mods:refresh"));
-      window.LF.navigate("/mod/" + publishModId);
+      return modRef.get();
+    }).then(function (doc) {
+      const slug = doc.exists ? doc.data().slug : null;
+      window.LF.navigate(slug ? "/" + slug : "/mymods");
     }).catch(function (err) {
       window.LF.toast("Couldn't publish: " + err.message, "error");
     }).finally(function () {
@@ -3247,6 +3596,319 @@ a:focus-visible, button:focus-visible, input:focus-visible, textarea:focus-visib
       btn.innerHTML = "🚀 Publish Mod";
     });
   });
+})();
+</script>
+<script>
+/* ============================================================
+   PROFILE + FOLLOW SYSTEM MODULE
+   ------------------------------------------------------------
+   Renders /@username, /@username/followers, /@username/following.
+   Owns bio editing (self only) and follow/unfollow (others only).
+   Follow counts are denormalized onto users/{uid}.followersCount /
+   .followingCount and kept in sync via batched writes on toggle.
+   ============================================================ */
+(function () {
+  "use strict";
+
+  let viewedUid = null;      // uid currently shown on the profile page
+  let viewedUsername = null;
+  let viewedIsSelf = false;
+  let currentTab = "mods";
+
+  const CATEGORY_LABELS = { blocks: "🧱 Blocks", items: "⚔️ Items", mobs: "👾 Mobs", other: "✨ Other" };
+
+  function initials(name) {
+    return (name || "?").trim().charAt(0).toUpperCase();
+  }
+
+  function avatarHTML(photoURL, name, size) {
+    size = size || 96;
+    if (photoURL) {
+      return '<img src="' + window.LF.escapeHTML(photoURL) + '" alt="">';
+    }
+    return '<span>' + window.LF.escapeHTML(initials(name)) + '</span>';
+  }
+
+  function headerHTML(profile) {
+    const bioHTML = profile.bio
+      ? '<p class="lf-profile-bio" id="profileBioText">' + window.LF.escapeHTML(profile.bio).replace(/\n/g, "<br>") + '</p>'
+      : '<p class="lf-profile-bio empty" id="profileBioText">' + (viewedIsSelf ? "Add a description to tell people about yourself." : "No description yet.") + '</p>';
+
+    return (
+      '<div class="lf-profile-header">' +
+        '<div class="lf-profile-avatar">' + avatarHTML(profile.photoURL, profile.displayName) + '</div>' +
+        '<div class="lf-profile-info">' +
+          '<h1>' + window.LF.escapeHTML(profile.displayName || "Builder") + '</h1>' +
+          '<div class="lf-profile-handle">@' + window.LF.escapeHTML(profile.username || "") + '</div>' +
+          '<div id="profileBioWrap">' + bioHTML +
+            (viewedIsSelf ? '<button class="lf-btn lf-btn-ghost lf-btn-sm" id="editBioBtn" style="margin-top:8px;">✏️ Edit description</button>' : '') +
+          '</div>' +
+          '<div class="lf-profile-stats">' +
+            '<div class="lf-profile-stat" data-tab="mods"><span class="num" id="statModsCount">0</span><span class="lbl">Mods</span></div>' +
+            '<div class="lf-profile-stat" data-tab="followers"><span class="num">' + window.LF.fmtCount(profile.followersCount) + '</span><span class="lbl">Followers</span></div>' +
+            '<div class="lf-profile-stat" data-tab="following"><span class="num">' + window.LF.fmtCount(profile.followingCount) + '</span><span class="lbl">Following</span></div>' +
+          '</div>' +
+        '</div>' +
+        '<div class="lf-profile-actions">' +
+          (viewedIsSelf ? '' : '<button class="lf-follow-btn" id="followBtn"><span class="lbl-default">Follow</span></button>') +
+        '</div>' +
+      '</div>' +
+      '<div class="lf-profile-tabs">' +
+        '<button class="lf-profile-tab active" data-tab="mods">Mods</button>' +
+        '<button class="lf-profile-tab" data-tab="followers">Followers</button>' +
+        '<button class="lf-profile-tab" data-tab="following">Following</button>' +
+      '</div>' +
+      '<div id="profileTabContent"></div>'
+    );
+  }
+
+  function wireBioEdit(profile) {
+    const btn = document.getElementById("editBioBtn");
+    if (!btn) return;
+    btn.addEventListener("click", function () {
+      const wrap = document.getElementById("profileBioWrap");
+      wrap.innerHTML =
+        '<div class="lf-bio-edit-wrap">' +
+          '<textarea id="bioTextarea" maxlength="280" placeholder="Tell people about yourself and what you build…">' + window.LF.escapeHTML(profile.bio || "") + '</textarea>' +
+          '<div class="lf-bio-edit-actions">' +
+            '<button class="lf-btn lf-btn-primary lf-btn-sm" id="saveBioBtn">Save</button>' +
+            '<button class="lf-btn lf-btn-ghost lf-btn-sm" id="cancelBioBtn">Cancel</button>' +
+          '</div>' +
+        '</div>';
+      document.getElementById("bioTextarea").focus();
+      document.getElementById("cancelBioBtn").addEventListener("click", function () { renderHeaderOnly(profile); });
+      document.getElementById("saveBioBtn").addEventListener("click", function () {
+        const newBio = document.getElementById("bioTextarea").value.trim();
+        this.disabled = true;
+        window.LF.db.collection("users").doc(viewedUid).set({
+          bio: newBio,
+          updatedAt: firebase.firestore.FieldValue.serverTimestamp()
+        }, { merge: true }).then(function () {
+          profile.bio = newBio;
+          if (window.LF.currentProfile) window.LF.currentProfile.bio = newBio;
+          window.LF.toast("Description updated.", "ok");
+          renderHeaderOnly(profile);
+        }).catch(function (err) {
+          window.LF.toast("Couldn't save: " + err.message, "error");
+        });
+      });
+    });
+  }
+
+  function renderHeaderOnly(profile) {
+    // Re-render just the header (used after bio save/cancel) without
+    // re-fetching mods/followers lists.
+    const existingTabContent = document.getElementById("profileTabContent");
+    const keepHTML = existingTabContent ? existingTabContent.innerHTML : "";
+    document.getElementById("profileContainer").innerHTML = headerHTML(profile);
+    document.getElementById("profileTabContent").innerHTML = keepHTML;
+    wireHeaderInteractions(profile);
+  }
+
+  function wireHeaderInteractions(profile) {
+    wireBioEdit(profile);
+
+    document.querySelectorAll(".lf-profile-stat, .lf-profile-tab").forEach(function (el) {
+      el.addEventListener("click", function () { switchProfileTab(el.dataset.tab, profile); });
+    });
+
+    if (!viewedIsSelf) {
+      const followBtn = document.getElementById("followBtn");
+      if (followBtn) wireFollowButton(followBtn, profile);
+    }
+  }
+
+  // ------------------------------------------------------------
+  // FOLLOW / UNFOLLOW
+  // ------------------------------------------------------------
+  function setFollowBtnState(btn, following) {
+    btn.classList.toggle("following", following);
+    btn.innerHTML = following
+      ? '<span class="lbl-default">✓ Following</span><span class="lbl-hover">Unfollow</span>'
+      : '<span class="lbl-default">Follow</span>';
+  }
+
+  function wireFollowButton(btn, profile) {
+    const me = window.LF.currentUser;
+    if (!me) { setFollowBtnState(btn, false); btn.addEventListener("click", function () { window.LF.requireAuth("Following builders"); }); return; }
+
+    const db = window.LF.db;
+    const followingRef = db.collection("users").doc(me.uid).collection("following").doc(viewedUid);
+
+    followingRef.get().then(function (doc) { setFollowBtnState(btn, doc.exists); });
+
+    btn.addEventListener("click", function () {
+      if (!window.LF.requireAuth("Following builders")) return;
+      btn.disabled = true;
+      const followerRef = db.collection("users").doc(viewedUid).collection("followers").doc(me.uid);
+      const myUserRef = db.collection("users").doc(me.uid);
+      const theirUserRef = db.collection("users").doc(viewedUid);
+
+      followingRef.get().then(function (doc) {
+        const batch = db.batch();
+        if (doc.exists) {
+          batch.delete(followingRef);
+          batch.delete(followerRef);
+          batch.update(myUserRef, { followingCount: firebase.firestore.FieldValue.increment(-1) });
+          batch.update(theirUserRef, { followersCount: firebase.firestore.FieldValue.increment(-1) });
+          return batch.commit().then(function () {
+            setFollowBtnState(btn, false);
+            profile.followersCount = Math.max(0, (profile.followersCount || 1) - 1);
+            updateFollowerCountDisplay(profile);
+          });
+        } else {
+          batch.set(followingRef, { followedAt: firebase.firestore.FieldValue.serverTimestamp() });
+          batch.set(followerRef, { followedAt: firebase.firestore.FieldValue.serverTimestamp() });
+          batch.update(myUserRef, { followingCount: firebase.firestore.FieldValue.increment(1) });
+          batch.update(theirUserRef, { followersCount: firebase.firestore.FieldValue.increment(1) });
+          return batch.commit().then(function () {
+            setFollowBtnState(btn, true);
+            profile.followersCount = (profile.followersCount || 0) + 1;
+            updateFollowerCountDisplay(profile);
+          });
+        }
+      }).catch(function (err) {
+        window.LF.toast("Couldn't update follow status: " + err.message, "error");
+      }).finally(function () { btn.disabled = false; });
+    });
+  }
+
+  function updateFollowerCountDisplay(profile) {
+    const stat = document.querySelector('.lf-profile-stat[data-tab="followers"] .num');
+    if (stat) stat.textContent = window.LF.fmtCount(profile.followersCount);
+  }
+
+  // ------------------------------------------------------------
+  // TABS: Mods / Followers / Following
+  // ------------------------------------------------------------
+  function modCardHTML(mod) {
+    const icon = mod.iconURL ? '<img src="' + window.LF.escapeHTML(mod.iconURL) + '" alt="" loading="lazy">' : '<div class="fallback-icon">📦</div>';
+    const catLabel = CATEGORY_LABELS[mod.category] || "✨ Other";
+    return (
+      '<a href="/' + window.LF.escapeHTML(mod.slug || mod.id) + '" class="lf-mod-card">' +
+        '<div class="lf-mod-card-media">' + icon + '<span class="lf-mod-card-cat">' + catLabel + '</span></div>' +
+        '<div class="lf-mod-card-body">' +
+          '<div class="lf-mod-card-title">' + window.LF.escapeHTML(mod.name) + '</div>' +
+          '<div class="lf-mod-card-desc">' + window.LF.escapeHTML(mod.shortDesc || "No description provided.") + '</div>' +
+          '<div class="lf-mod-card-stats"><div class="stat-group"><span class="stat">⬇ ' + window.LF.fmtCount(mod.downloads) + '</span><span class="stat">❤ ' + window.LF.fmtCount(mod.likes) + '</span></div></div>' +
+        '</div>' +
+      '</a>'
+    );
+  }
+
+  function renderModsTab(profile) {
+    const el = document.getElementById("profileTabContent");
+    el.innerHTML = '<div class="lf-loading-fill"><span class="lf-spinner" style="border-top-color:var(--lens-cyan); border-color:var(--border-soft);"></span> Loading mods…</div>';
+
+    window.LF.db.collection("mods")
+      .where("ownerId", "==", viewedUid)
+      .where("status", "==", "published")
+      .orderBy("createdAt", "desc")
+      .get()
+      .then(function (snap) {
+        const mods = snap.docs.map(function (d) { return Object.assign({ id: d.id }, d.data()); });
+        const countEl = document.getElementById("statModsCount");
+        if (countEl) countEl.textContent = mods.length;
+        if (!mods.length) {
+          el.innerHTML = '<div class="lf-empty-state"><div class="ic">📦</div><h3>No published mods yet</h3></div>';
+          return;
+        }
+        el.innerHTML = '<div class="lf-mod-grid">' + mods.map(modCardHTML).join("") + '</div>';
+      })
+      .catch(function (err) {
+        console.error(err);
+        el.innerHTML = '<div class="lf-empty-state"><div class="ic">⚠️</div><h3>Couldn\'t load mods</h3></div>';
+      });
+  }
+
+  function personRowHTML(uid, data) {
+    return (
+      '<a href="/@' + window.LF.escapeHTML(data.username || uid) + '" class="lf-people-row">' +
+        '<div class="lf-people-avatar">' + avatarHTML(data.photoURL, data.displayName) + '</div>' +
+        '<div class="lf-people-info">' +
+          '<div class="n">' + window.LF.escapeHTML(data.displayName || "Builder") + '</div>' +
+          '<div class="h">@' + window.LF.escapeHTML(data.username || "") + '</div>' +
+        '</div>' +
+      '</a>'
+    );
+  }
+
+  function renderPeopleTab(subcollection, emptyLabel) {
+    const el = document.getElementById("profileTabContent");
+    el.innerHTML = '<div class="lf-loading-fill"><span class="lf-spinner" style="border-top-color:var(--lens-cyan); border-color:var(--border-soft);"></span> Loading…</div>';
+
+    window.LF.db.collection("users").doc(viewedUid).collection(subcollection)
+      .orderBy("followedAt", "desc")
+      .limit(200)
+      .get()
+      .then(function (snap) {
+        if (snap.empty) {
+          el.innerHTML = '<div class="lf-empty-state"><div class="ic">👥</div><h3>' + emptyLabel + '</h3></div>';
+          return;
+        }
+        const uids = snap.docs.map(function (d) { return d.id; });
+        return Promise.all(uids.map(function (uid) {
+          return window.LF.db.collection("users").doc(uid).get().then(function (doc) {
+            return doc.exists ? { uid: uid, data: doc.data() } : null;
+          });
+        })).then(function (people) {
+          const rows = people.filter(Boolean).map(function (p) { return personRowHTML(p.uid, p.data); }).join("");
+          el.innerHTML = '<div class="lf-people-list">' + (rows || '<div class="lf-empty-state"><div class="ic">👥</div><h3>' + emptyLabel + '</h3></div>') + '</div>';
+        });
+      })
+      .catch(function (err) {
+        console.error(err);
+        el.innerHTML = '<div class="lf-empty-state"><div class="ic">⚠️</div><h3>Couldn\'t load list</h3></div>';
+      });
+  }
+
+  function switchProfileTab(tab, profile) {
+    currentTab = tab;
+    document.querySelectorAll(".lf-profile-tab").forEach(function (t) { t.classList.toggle("active", t.dataset.tab === tab); });
+
+    const path = tab === "mods" ? "/@" + viewedUsername : "/@" + viewedUsername + "/" + tab;
+    if (window.location.pathname !== path) window.history.replaceState(null, "", path);
+
+    if (tab === "mods") renderModsTab(profile);
+    else if (tab === "followers") renderPeopleTab("followers", "No followers yet");
+    else if (tab === "following") renderPeopleTab("following", "Not following anyone yet");
+  }
+
+  // ------------------------------------------------------------
+  // ENTRY POINT
+  // ------------------------------------------------------------
+  function loadProfile(username, tab) {
+    document.getElementById("profileContainer").innerHTML = '<div class="lf-loading-fill" style="padding:100px 0;"><span class="lf-spinner" style="border-top-color:var(--lens-cyan); border-color:var(--border-soft);"></span> Loading profile…</div>';
+
+    window.LF.db.collection("usernames").doc(username).get().then(function (unameDoc) {
+      if (!unameDoc.exists) {
+        document.getElementById("profileContainer").innerHTML = '<div class="lf-empty-state" style="padding:100px 0;"><div class="ic">❓</div><h3>User not found</h3><p>This profile doesn\'t exist.</p></div>';
+        return;
+      }
+      const uid = unameDoc.data().uid;
+      return window.LF.db.collection("users").doc(uid).get().then(function (userDoc) {
+        if (!userDoc.exists) {
+          document.getElementById("profileContainer").innerHTML = '<div class="lf-empty-state" style="padding:100px 0;"><div class="ic">❓</div><h3>User not found</h3></div>';
+          return;
+        }
+        viewedUid = uid;
+        viewedUsername = username;
+        viewedIsSelf = !!(window.LF.currentUser && window.LF.currentUser.uid === uid);
+        const profile = Object.assign({ uid: uid }, userDoc.data());
+        profile.followersCount = profile.followersCount || 0;
+        profile.followingCount = profile.followingCount || 0;
+
+        document.getElementById("profileContainer").innerHTML = headerHTML(profile);
+        wireHeaderInteractions(profile);
+        switchProfileTab(tab === "followers" || tab === "following" ? tab : "mods", profile);
+      });
+    }).catch(function (err) {
+      console.error(err);
+      document.getElementById("profileContainer").innerHTML = '<div class="lf-empty-state" style="padding:100px 0;"><div class="ic">⚠️</div><h3>Couldn\'t load profile</h3></div>';
+    });
+  }
+
+  window.addEventListener("lf:route:profile", function (e) { loadProfile(e.detail.username, e.detail.tab); });
 })();
 </script>
 </html>
