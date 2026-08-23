@@ -1,0 +1,2707 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>LegendsForce — Build. Publish. Play.</title>
+<meta name="description" content="LegendsForce is a community platform for creating, publishing, and downloading .lens mods.">
+
+<!-- Firebase (compat SDK, same rules/shape as playlegendshub.vercel.app, separate project) -->
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-auth-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-storage-compat.js"></script>
+
+<style>
+/* ============================================================
+   LEGENDSFORCE — DESIGN TOKENS
+   ============================================================
+   Palette: deep ink-navy base with cyan/electric-blue "lens" glow.
+   Signature element: the "lens facet" — a hexagonal/diamond cut
+   shape used for logo, mod icons frame, and section markers,
+   referencing the .lens file format itself (a lens = focused light).
+   ============================================================ */
+:root{
+  --bg-void:        #05070d;
+  --bg-deep:        #0a0f1e;
+  --bg-panel:       #0e1526;
+  --bg-panel-2:     #121b30;
+  --bg-elevated:    #16203a;
+  --border-soft:    #1f2b47;
+  --border-glow:    #2a3f66;
+
+  --lens-cyan:      #00f2fe;
+  --lens-blue:      #4facfe;
+  --lens-deep:      #0a4d8c;
+  --lens-violet:    #7b6cff;
+
+  --text-primary:   #eaf2ff;
+  --text-secondary: #9db2d6;
+  --text-tertiary:  #5f7296;
+  --text-disabled:  #3a4763;
+
+  --ok:             #33e39a;
+  --warn:           #ffb648;
+  --danger:         #ff5d7a;
+
+  --radius-sm: 6px;
+  --radius-md: 10px;
+  --radius-lg: 16px;
+  --radius-xl: 22px;
+
+  --font-display: 'Chakra Petch', 'Space Grotesk', sans-serif;
+  --font-body: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+  --font-mono: 'JetBrains Mono', 'Fira Code', monospace;
+
+  --shadow-glow-sm: 0 0 12px rgba(0,242,254,0.25);
+  --shadow-glow-md: 0 0 28px rgba(0,242,254,0.18);
+  --shadow-panel: 0 8px 32px rgba(0,0,0,0.45);
+}
+
+@font-face{
+  font-family:'Chakra Petch';
+  src: local('Chakra Petch');
+}
+
+*{ box-sizing:border-box; margin:0; padding:0; }
+html{ scroll-behavior:smooth; }
+body{
+  background: var(--bg-void);
+  background-image:
+    radial-gradient(ellipse 1200px 700px at 15% -10%, rgba(0,242,254,0.07), transparent 60%),
+    radial-gradient(ellipse 900px 600px at 100% 10%, rgba(123,108,255,0.06), transparent 55%),
+    linear-gradient(180deg, #05070d 0%, #060a14 100%);
+  color: var(--text-primary);
+  font-family: var(--font-body);
+  min-height:100vh;
+  -webkit-font-smoothing:antialiased;
+  overflow-x:hidden;
+}
+
+::selection{ background: rgba(0,242,254,0.25); color:#fff; }
+
+/* subtle scanline / pixel-shimmer texture over the whole app, referencing the logo's pixel-glass L */
+body::before{
+  content:"";
+  position:fixed; inset:0;
+  pointer-events:none;
+  z-index:0;
+  background-image: repeating-linear-gradient(0deg, rgba(255,255,255,0.008) 0px, rgba(255,255,255,0.008) 1px, transparent 1px, transparent 3px);
+  opacity:0.4;
+}
+
+::-webkit-scrollbar{ width:10px; height:10px; }
+::-webkit-scrollbar-track{ background: var(--bg-deep); }
+::-webkit-scrollbar-thumb{ background: var(--border-glow); border-radius:10px; }
+::-webkit-scrollbar-thumb:hover{ background: var(--lens-deep); }
+
+a{ color:inherit; text-decoration:none; }
+button{ font-family:inherit; cursor:pointer; }
+input,textarea,select{ font-family:inherit; }
+
+.visually-hidden{
+  position:absolute!important; width:1px;height:1px; overflow:hidden;
+  clip:rect(0,0,0,0); white-space:nowrap;
+}
+
+/* Focus visibility (a11y) */
+a:focus-visible, button:focus-visible, input:focus-visible, textarea:focus-visible, select:focus-visible, [tabindex]:focus-visible{
+  outline: 2px solid var(--lens-cyan);
+  outline-offset: 2px;
+  border-radius: 4px;
+}
+
+@media (prefers-reduced-motion: reduce){
+  *{ animation-duration:0.001ms !important; animation-iteration-count:1 !important; transition-duration:0.001ms !important; scroll-behavior:auto !important; }
+}
+</style>
+</head>
+<style>
+/* ============================================================
+   LOGO / BRAND — "Lens Facet" mark
+   A faceted diamond/hex shape (echoing the pixel-glass L artwork)
+   rendered in pure CSS, no image asset needed.
+   ============================================================ */
+.lf-brand{
+  display:flex; align-items:center; gap:10px;
+  font-family: var(--font-display);
+  letter-spacing:0.02em;
+}
+.lf-mark{
+  position:relative;
+  width:30px; height:37px;
+  flex-shrink:0;
+  display:flex; align-items:center; justify-content:center;
+}
+.lf-mark svg{ width:100%; height:100%; display:block; filter: drop-shadow(0 0 6px rgba(0,242,254,0.55)); }
+.lf-mark img{
+  width:100%; height:100%; object-fit:contain; display:block;
+  filter: drop-shadow(0 0 7px rgba(0,242,254,0.6)) drop-shadow(0 0 14px rgba(0,242,254,0.25));
+  transition: filter .2s ease;
+}
+.lf-brand:hover .lf-mark img{ filter: drop-shadow(0 0 10px rgba(0,242,254,0.85)) drop-shadow(0 0 20px rgba(0,242,254,0.4)); }
+
+/* Larger hero variant of the mark, used on empty states / loading splash if needed */
+.lf-mark-lg{ width:64px; height:79px; }
+.lf-brand-text{
+  font-size:19px;
+  font-weight:700;
+  color:#fff;
+  line-height:1;
+}
+.lf-brand-text .accent{
+  background: linear-gradient(120deg, var(--lens-cyan), var(--lens-blue));
+  -webkit-background-clip:text;
+  background-clip:text;
+  color:transparent;
+}
+
+/* ============================================================
+   APP SHELL
+   ============================================================ */
+#lf-app{ position:relative; z-index:1; min-height:100vh; display:flex; flex-direction:column; }
+
+.lf-header{
+  position:sticky; top:0; z-index:200;
+  display:flex; align-items:center; justify-content:space-between;
+  gap:20px;
+  padding:14px 28px;
+  background: rgba(8,11,20,0.85);
+  backdrop-filter: blur(14px) saturate(140%);
+  border-bottom:1px solid var(--border-soft);
+}
+.lf-header-left{ display:flex; align-items:center; gap:28px; }
+.lf-nav{ display:flex; align-items:center; gap:4px; }
+.lf-nav a{
+  padding:8px 14px;
+  border-radius: var(--radius-md);
+  font-size:14px; font-weight:600;
+  color: var(--text-secondary);
+  transition: color .15s ease, background .15s ease;
+}
+.lf-nav a:hover{ color:#fff; background: rgba(255,255,255,0.04); }
+.lf-nav a.active{ color:#fff; background: rgba(0,242,254,0.08); box-shadow: inset 0 0 0 1px rgba(0,242,254,0.25); }
+
+.lf-header-right{ display:flex; align-items:center; gap:12px; }
+
+.lf-btn{
+  display:inline-flex; align-items:center; justify-content:center; gap:8px;
+  padding:10px 18px;
+  border-radius: var(--radius-md);
+  font-size:13.5px; font-weight:700;
+  border:1px solid transparent;
+  transition: transform .12s ease, box-shadow .15s ease, background .15s ease, border-color .15s ease;
+  white-space:nowrap;
+}
+.lf-btn:active{ transform: translateY(1px) scale(0.98); }
+.lf-btn-primary{
+  background: linear-gradient(120deg, var(--lens-cyan), var(--lens-blue));
+  color:#001521;
+  box-shadow: var(--shadow-glow-sm);
+}
+.lf-btn-primary:hover{ box-shadow: var(--shadow-glow-md); filter:brightness(1.06); }
+.lf-btn-ghost{
+  background: rgba(255,255,255,0.03);
+  color: var(--text-primary);
+  border-color: var(--border-soft);
+}
+.lf-btn-ghost:hover{ border-color: var(--border-glow); background: rgba(255,255,255,0.06); }
+.lf-btn-danger{ background: rgba(255,93,122,0.12); color:#ffb3c1; border-color: rgba(255,93,122,0.3); }
+.lf-btn-danger:hover{ background: rgba(255,93,122,0.2); }
+.lf-btn-sm{ padding:7px 12px; font-size:12.5px; }
+.lf-btn-block{ width:100%; }
+.lf-btn:disabled{ opacity:0.5; cursor:not-allowed; transform:none!important; box-shadow:none!important; }
+
+/* Profile menu */
+.lf-profile{ position:relative; }
+.lf-avatar-btn{
+  width:38px; height:38px; border-radius:50%;
+  background: linear-gradient(135deg, var(--lens-deep), var(--lens-violet));
+  border:1px solid var(--border-glow);
+  display:flex; align-items:center; justify-content:center;
+  font-weight:700; font-size:14px; color:#fff;
+  overflow:hidden;
+}
+.lf-avatar-btn img{ width:100%; height:100%; object-fit:cover; }
+
+.lf-dropdown{
+  position:absolute; top:calc(100% + 10px); right:0;
+  width:230px;
+  background: var(--bg-elevated);
+  border:1px solid var(--border-soft);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-panel);
+  padding:8px;
+  opacity:0; visibility:hidden; transform: translateY(-6px);
+  transition: opacity .15s ease, transform .15s ease, visibility .15s;
+  z-index:300;
+}
+.lf-dropdown.open{ opacity:1; visibility:visible; transform:translateY(0); }
+.lf-dropdown-header{ padding:10px 12px 8px; border-bottom:1px solid var(--border-soft); margin-bottom:6px; }
+.lf-dropdown-header .name{ font-weight:700; font-size:14px; color:#fff; }
+.lf-dropdown-header .email{ font-size:12px; color:var(--text-tertiary); margin-top:2px; word-break:break-all; }
+.lf-dropdown-item{
+  display:flex; align-items:center; gap:10px;
+  width:100%; text-align:left;
+  padding:10px 12px;
+  border-radius: var(--radius-sm);
+  font-size:13.5px; font-weight:600;
+  color: var(--text-primary);
+  background:none; border:none;
+  transition: background .12s ease;
+}
+.lf-dropdown-item:hover{ background: rgba(255,255,255,0.06); }
+.lf-dropdown-item.danger{ color:#ff8fa3; }
+.lf-dropdown-item .ic{ font-size:16px; width:18px; text-align:center; }
+
+.lf-main{ flex:1; width:100%; }
+.lf-container{ max-width:1280px; margin:0 auto; padding:0 28px; }
+
+.lf-footer{
+  border-top:1px solid var(--border-soft);
+  padding:28px;
+  text-align:center;
+  color: var(--text-tertiary);
+  font-size:12.5px;
+}
+
+/* Mobile nav toggle */
+.lf-nav-toggle{ display:none; }
+
+@media (max-width: 900px){
+  .lf-header{ padding:12px 16px; }
+  .lf-container{ padding:0 16px; }
+  .lf-nav{ display:none; }
+  .lf-nav-toggle{
+    display:flex; align-items:center; justify-content:center;
+    width:38px; height:38px;
+    border-radius: var(--radius-md);
+    background: rgba(255,255,255,0.04);
+    border:1px solid var(--border-soft);
+    color:#fff; font-size:18px;
+  }
+  .lf-nav.mobile-open{
+    display:flex; flex-direction:column;
+    position:fixed; top:64px; left:0; right:0;
+    background: var(--bg-elevated);
+    border-bottom:1px solid var(--border-soft);
+    padding:10px; gap:2px; z-index:250;
+  }
+  .lf-nav.mobile-open a{ padding:12px 14px; }
+}
+</style>
+<style>
+/* ============================================================
+   HERO
+   ============================================================ */
+.lf-hero{
+  position:relative;
+  padding:64px 0 40px;
+  text-align:center;
+  overflow:hidden;
+}
+.lf-hero-glow{
+  position:absolute; top:-120px; left:50%; transform:translateX(-50%);
+  width:900px; height:500px;
+  background: radial-gradient(ellipse, rgba(0,242,254,0.16), transparent 65%);
+  pointer-events:none;
+  z-index:-1;
+}
+.lf-hero h1{
+  font-family: var(--font-display);
+  font-size:clamp(28px, 4vw, 46px);
+  font-weight:700;
+  color:#fff;
+  letter-spacing:-0.01em;
+  margin-bottom:12px;
+}
+.lf-hero h1 .accent{
+  background: linear-gradient(120deg, var(--lens-cyan), var(--lens-blue), var(--lens-violet));
+  -webkit-background-clip:text; background-clip:text; color:transparent;
+}
+.lf-hero p{ color: var(--text-secondary); font-size:15.5px; max-width:560px; margin:0 auto; }
+
+/* ============================================================
+   SEARCH + FILTER BAR
+   ============================================================ */
+.lf-searchbar{
+  display:flex; flex-wrap:wrap; gap:10px;
+  align-items:center;
+  margin: 28px 0 20px;
+  padding:10px;
+  background: var(--bg-panel);
+  border:1px solid var(--border-soft);
+  border-radius: var(--radius-lg);
+}
+.lf-search-input-wrap{
+  flex:1 1 260px;
+  display:flex; align-items:center; gap:10px;
+  padding:10px 14px;
+  background: var(--bg-deep);
+  border:1px solid var(--border-soft);
+  border-radius: var(--radius-md);
+}
+.lf-search-input-wrap svg{ flex-shrink:0; opacity:0.5; }
+.lf-search-input-wrap input{
+  flex:1; background:none; border:none; outline:none;
+  color:#fff; font-size:14px;
+}
+.lf-search-input-wrap input::placeholder{ color: var(--text-tertiary); }
+
+.lf-filter-chips{ display:flex; flex-wrap:wrap; gap:8px; }
+.lf-chip{
+  padding:9px 15px;
+  border-radius: 999px;
+  font-size:13px; font-weight:600;
+  background: var(--bg-deep);
+  border:1px solid var(--border-soft);
+  color: var(--text-secondary);
+  transition: all .15s ease;
+  white-space:nowrap;
+}
+.lf-chip:hover{ border-color: var(--border-glow); color:#fff; }
+.lf-chip.active{
+  background: rgba(0,242,254,0.1);
+  border-color: var(--lens-cyan);
+  color: var(--lens-cyan);
+}
+
+.lf-sort-select{
+  padding:10px 14px;
+  background: var(--bg-deep);
+  border:1px solid var(--border-soft);
+  border-radius: var(--radius-md);
+  color: var(--text-primary);
+  font-size:13px; font-weight:600;
+}
+
+.lf-results-meta{
+  display:flex; justify-content:space-between; align-items:center;
+  margin: 4px 0 16px;
+  color: var(--text-tertiary); font-size:13px;
+}
+
+/* ============================================================
+   MOD GRID + CARDS
+   ============================================================ */
+.lf-mod-grid{
+  display:grid;
+  grid-template-columns: repeat(auto-fill, minmax(270px, 1fr));
+  gap:18px;
+  padding-bottom:60px;
+}
+
+.lf-mod-card{
+  position:relative;
+  background: var(--bg-panel);
+  border:1px solid var(--border-soft);
+  border-radius: var(--radius-lg);
+  overflow:hidden;
+  display:flex; flex-direction:column;
+  transition: border-color .18s ease, transform .18s ease, box-shadow .18s ease;
+}
+.lf-mod-card:hover{
+  border-color: var(--border-glow);
+  transform: translateY(-3px);
+  box-shadow: 0 14px 34px rgba(0,0,0,0.5), 0 0 0 1px rgba(0,242,254,0.12);
+}
+.lf-mod-card-media{
+  position:relative;
+  aspect-ratio: 16/10;
+  background: linear-gradient(135deg, var(--bg-elevated), var(--bg-panel-2));
+  display:flex; align-items:center; justify-content:center;
+  overflow:hidden;
+  border-bottom:1px solid var(--border-soft);
+}
+.lf-mod-card-media img{ width:100%; height:100%; object-fit:cover; }
+.lf-mod-card-media .fallback-icon{ font-size:38px; opacity:0.3; }
+.lf-mod-card-cat{
+  position:absolute; top:10px; left:10px;
+  padding:4px 10px;
+  font-size:10.5px; font-weight:800; letter-spacing:0.04em; text-transform:uppercase;
+  background: rgba(5,7,13,0.75);
+  backdrop-filter: blur(6px);
+  border:1px solid rgba(0,242,254,0.3);
+  color: var(--lens-cyan);
+  border-radius:999px;
+}
+.lf-mod-card-body{ padding:14px 16px 16px; display:flex; flex-direction:column; gap:8px; flex:1; }
+.lf-mod-card-title{ font-size:15.5px; font-weight:700; color:#fff; line-height:1.3; }
+.lf-mod-card-author{
+  font-size:12.5px; color: var(--text-tertiary);
+  display:flex; align-items:center; gap:6px;
+}
+.lf-mod-card-desc{
+  font-size:12.5px; color: var(--text-secondary);
+  line-height:1.5;
+  display:-webkit-box; -webkit-line-clamp:2; -webkit-box-orient:vertical; overflow:hidden;
+  flex:1;
+}
+.lf-mod-card-stats{
+  display:flex; align-items:center; justify-content:space-between;
+  margin-top:6px; padding-top:10px;
+  border-top:1px solid var(--border-soft);
+  font-size:12px; color: var(--text-tertiary);
+}
+.lf-mod-card-stats .stat-group{ display:flex; align-items:center; gap:14px; }
+.lf-mod-card-stats .stat{ display:flex; align-items:center; gap:4px; }
+
+.lf-empty-state{
+  grid-column: 1 / -1;
+  text-align:center;
+  padding:70px 20px;
+  color: var(--text-tertiary);
+}
+.lf-empty-state .ic{ font-size:44px; margin-bottom:12px; opacity:0.5; }
+.lf-empty-state h3{ color:#fff; font-size:17px; margin-bottom:6px; }
+
+.lf-skeleton{
+  background: linear-gradient(100deg, var(--bg-panel) 30%, var(--bg-elevated) 50%, var(--bg-panel) 70%);
+  background-size:200% 100%;
+  animation: lf-shimmer 1.4s infinite;
+  border-radius: var(--radius-md);
+}
+@keyframes lf-shimmer{ 0%{background-position:200% 0;} 100%{background-position:-200% 0;} }
+
+/* ============================================================
+   MOD DETAIL PAGE
+   ============================================================ */
+.lf-detail-header{
+  display:flex; gap:24px; flex-wrap:wrap;
+  padding:32px 0 20px;
+  border-bottom:1px solid var(--border-soft);
+  margin-bottom:24px;
+}
+.lf-detail-icon{
+  width:120px; height:120px; flex-shrink:0;
+  border-radius: var(--radius-lg);
+  background: linear-gradient(135deg, var(--bg-elevated), var(--bg-panel-2));
+  border:1px solid var(--border-soft);
+  display:flex; align-items:center; justify-content:center;
+  overflow:hidden;
+}
+.lf-detail-icon img{ width:100%; height:100%; object-fit:cover; }
+.lf-detail-info{ flex:1; min-width:240px; }
+.lf-detail-info h1{ font-family:var(--font-display); font-size:26px; color:#fff; margin-bottom:6px; }
+.lf-detail-meta-row{ display:flex; flex-wrap:wrap; gap:16px; color:var(--text-secondary); font-size:13.5px; margin-bottom:14px; }
+.lf-detail-meta-row .item{ display:flex; align-items:center; gap:6px; }
+.lf-detail-actions{ display:flex; gap:10px; flex-wrap:wrap; }
+
+.lf-tabs{
+  display:flex; gap:4px; margin-bottom:22px;
+  border-bottom:1px solid var(--border-soft);
+  overflow-x:auto;
+}
+.lf-tab{
+  padding:11px 18px;
+  font-size:13.5px; font-weight:700;
+  color: var(--text-tertiary);
+  border-bottom:2px solid transparent;
+  white-space:nowrap;
+}
+.lf-tab.active{ color:#fff; border-bottom-color: var(--lens-cyan); }
+.lf-tab:hover{ color: var(--text-primary); }
+
+.lf-detail-layout{ display:grid; grid-template-columns: 1fr 300px; gap:28px; padding-bottom:60px; }
+@media (max-width:880px){ .lf-detail-layout{ grid-template-columns:1fr; } }
+
+.lf-rich-body{ color: var(--text-secondary); line-height:1.75; font-size:14.5px; }
+.lf-rich-body h1,.lf-rich-body h2,.lf-rich-body h3{ color:#fff; margin:20px 0 10px; font-family:var(--font-display); }
+.lf-rich-body p{ margin-bottom:12px; }
+.lf-rich-body img{ max-width:100%; border-radius:var(--radius-md); margin:14px 0; border:1px solid var(--border-soft); }
+.lf-rich-body ul,.lf-rich-body ol{ margin:0 0 12px 20px; }
+.lf-rich-body code{ background: var(--bg-deep); padding:2px 6px; border-radius:4px; font-family:var(--font-mono); font-size:13px; }
+
+.lf-screenshot-strip{ display:flex; gap:10px; overflow-x:auto; padding-bottom:6px; margin:18px 0; }
+.lf-screenshot-strip img{
+  height:150px; border-radius: var(--radius-md); border:1px solid var(--border-soft);
+  cursor:pointer; transition: transform .15s ease;
+}
+.lf-screenshot-strip img:hover{ transform:scale(1.02); border-color: var(--border-glow); }
+
+.lf-side-panel{
+  background: var(--bg-panel);
+  border:1px solid var(--border-soft);
+  border-radius: var(--radius-lg);
+  padding:18px;
+  height:fit-content;
+}
+.lf-side-panel h4{ font-size:13px; color: var(--text-tertiary); text-transform:uppercase; letter-spacing:0.05em; margin-bottom:10px; }
+.lf-side-stat-row{ display:flex; justify-content:space-between; padding:8px 0; border-bottom:1px solid var(--border-soft); font-size:13.5px; }
+.lf-side-stat-row:last-child{ border-bottom:none; }
+.lf-side-stat-row .label{ color: var(--text-tertiary); }
+.lf-side-stat-row .value{ color:#fff; font-weight:700; }
+
+/* Files (versions) tab */
+.lf-files-table{ width:100%; border-collapse:collapse; }
+.lf-files-table th{
+  text-align:left; font-size:11.5px; text-transform:uppercase; letter-spacing:0.04em;
+  color: var(--text-tertiary); padding:10px 12px; border-bottom:1px solid var(--border-soft);
+}
+.lf-files-table td{ padding:12px; border-bottom:1px solid var(--border-soft); font-size:13.5px; }
+.lf-files-table tr:hover td{ background: rgba(255,255,255,0.02); }
+.lf-version-badge{
+  display:inline-block; padding:3px 9px; border-radius:6px;
+  background: rgba(0,242,254,0.1); color: var(--lens-cyan);
+  font-family: var(--font-mono); font-size:11.5px; font-weight:700;
+}
+.lf-version-badge.latest{ background: rgba(51,227,154,0.12); color: var(--ok); }
+
+/* Comments */
+.lf-comment{ display:flex; gap:12px; padding:14px 0; border-bottom:1px solid var(--border-soft); }
+.lf-comment-avatar{ width:34px; height:34px; border-radius:50%; background: var(--bg-elevated); flex-shrink:0; display:flex; align-items:center; justify-content:center; font-size:13px; font-weight:700; }
+.lf-comment-body{ flex:1; }
+.lf-comment-author{ font-weight:700; font-size:13.5px; color:#fff; }
+.lf-comment-time{ font-size:11.5px; color: var(--text-tertiary); margin-left:8px; }
+.lf-comment-text{ font-size:13.5px; color: var(--text-secondary); margin-top:4px; line-height:1.5; }
+</style>
+<style>
+/* ============================================================
+   MODAL / OVERLAY SYSTEM
+   ============================================================ */
+.lf-overlay{
+  position:fixed; inset:0; z-index:900;
+  background: rgba(3,5,10,0.75);
+  backdrop-filter: blur(6px);
+  display:flex; align-items:center; justify-content:center;
+  padding:20px;
+  opacity:0; visibility:hidden;
+  transition: opacity .18s ease, visibility .18s;
+}
+.lf-overlay.open{ opacity:1; visibility:visible; }
+.lf-modal{
+  background: var(--bg-panel);
+  border:1px solid var(--border-soft);
+  border-radius: var(--radius-xl);
+  box-shadow: var(--shadow-panel);
+  width:100%; max-width:520px;
+  max-height:88vh; overflow-y:auto;
+  transform: translateY(14px) scale(0.98);
+  transition: transform .18s ease;
+}
+.lf-overlay.open .lf-modal{ transform: translateY(0) scale(1); }
+.lf-modal.lf-modal-wide{ max-width:960px; }
+.lf-modal-header{
+  display:flex; align-items:center; justify-content:space-between;
+  padding:18px 22px; border-bottom:1px solid var(--border-soft);
+  position:sticky; top:0; background: var(--bg-panel); z-index:5;
+}
+.lf-modal-header h2{ font-family: var(--font-display); font-size:18px; color:#fff; }
+.lf-modal-close{
+  width:32px; height:32px; border-radius:8px;
+  display:flex; align-items:center; justify-content:center;
+  background: rgba(255,255,255,0.04); border:1px solid var(--border-soft);
+  color: var(--text-secondary); font-size:16px;
+}
+.lf-modal-close:hover{ background: rgba(255,255,255,0.08); color:#fff; }
+.lf-modal-body{ padding:22px; }
+.lf-modal-footer{
+  display:flex; justify-content:flex-end; gap:10px;
+  padding:16px 22px; border-top:1px solid var(--border-soft);
+  position:sticky; bottom:0; background: var(--bg-panel);
+}
+
+/* ============================================================
+   FORM ELEMENTS
+   ============================================================ */
+.lf-field{ margin-bottom:18px; }
+.lf-field label{
+  display:block; font-size:12.5px; font-weight:700;
+  color: var(--text-secondary); margin-bottom:7px;
+  text-transform:uppercase; letter-spacing:0.03em;
+}
+.lf-field .hint{ font-size:12px; color: var(--text-tertiary); margin-top:6px; font-weight:400; text-transform:none; letter-spacing:0; }
+.lf-input, .lf-textarea, .lf-select{
+  width:100%;
+  padding:11px 14px;
+  background: var(--bg-deep);
+  border:1px solid var(--border-soft);
+  border-radius: var(--radius-md);
+  color:#fff; font-size:14px;
+  transition: border-color .15s ease, box-shadow .15s ease;
+}
+.lf-input:focus, .lf-textarea:focus, .lf-select:focus{
+  outline:none; border-color: var(--lens-cyan);
+  box-shadow: 0 0 0 3px rgba(0,242,254,0.12);
+}
+.lf-textarea{ resize:vertical; min-height:90px; line-height:1.5; }
+.lf-input::placeholder, .lf-textarea::placeholder{ color: var(--text-disabled); }
+.lf-input-row{ display:flex; gap:10px; }
+.lf-input-row > *{ flex:1; }
+
+.lf-id-preview{
+  display:flex; align-items:center; gap:8px;
+  margin-top:8px; padding:10px 14px;
+  background: var(--bg-void);
+  border:1px dashed var(--border-glow);
+  border-radius: var(--radius-md);
+  font-family: var(--font-mono);
+  font-size:13px;
+}
+.lf-id-preview .label{ color: var(--text-tertiary); font-family:var(--font-body); font-size:11px; text-transform:uppercase; }
+.lf-id-preview .code{ color: var(--lens-cyan); font-weight:700; }
+.lf-id-preview .code .sep{ color: var(--text-tertiary); }
+
+.lf-radio-cards{ display:grid; grid-template-columns:1fr 1fr; gap:10px; }
+.lf-radio-card{
+  padding:12px 14px; border-radius: var(--radius-md);
+  border:1px solid var(--border-soft); background: var(--bg-deep);
+  cursor:pointer; transition: all .15s ease;
+}
+.lf-radio-card input{ display:none; }
+.lf-radio-card .title{ font-size:13px; font-weight:700; color:#fff; display:flex; align-items:center; gap:8px; }
+.lf-radio-card .desc{ font-size:11.5px; color: var(--text-tertiary); margin-top:4px; }
+.lf-radio-card.checked{ border-color: var(--lens-cyan); background: rgba(0,242,254,0.06); box-shadow: 0 0 0 1px var(--lens-cyan); }
+
+.lf-checkbox-row{ display:flex; align-items:center; gap:10px; }
+.lf-checkbox-row input[type=checkbox]{
+  width:18px; height:18px; accent-color: var(--lens-cyan); cursor:pointer;
+}
+.lf-checkbox-row label{ margin:0; text-transform:none; letter-spacing:0; font-weight:500; font-size:13.5px; color:var(--text-secondary); }
+
+/* ============================================================
+   MOD EDITOR (MCreator-style, inside wide modal)
+   ============================================================ */
+.lf-editor-layout{ display:grid; grid-template-columns: 260px 1fr; min-height:520px; }
+@media (max-width:760px){ .lf-editor-layout{ grid-template-columns:1fr; } }
+
+.lf-editor-sidebar{
+  border-right:1px solid var(--border-soft);
+  padding:18px 14px;
+}
+.lf-editor-step{
+  display:flex; align-items:center; gap:10px;
+  padding:11px 12px; border-radius: var(--radius-md);
+  font-size:13px; font-weight:700; color: var(--text-tertiary);
+  margin-bottom:4px;
+}
+.lf-editor-step .num{
+  width:22px; height:22px; border-radius:50%;
+  background: var(--bg-deep); border:1px solid var(--border-soft);
+  display:flex; align-items:center; justify-content:center;
+  font-size:11px; flex-shrink:0;
+}
+.lf-editor-step.active{ color:#fff; background: rgba(0,242,254,0.08); }
+.lf-editor-step.active .num{ background: var(--lens-cyan); color:#001521; border-color: var(--lens-cyan); }
+.lf-editor-step.done .num{ background: var(--ok); color:#00291a; border-color: var(--ok); }
+.lf-editor-step.done{ color: var(--text-secondary); }
+
+.lf-editor-main{ padding:22px; }
+.lf-editor-panel{ display:none; }
+.lf-editor-panel.active{ display:block; }
+
+.lf-type-grid{ display:grid; grid-template-columns:repeat(3,1fr); gap:10px; margin-bottom:6px; }
+.lf-type-card{
+  padding:16px 10px; text-align:center;
+  border-radius: var(--radius-md); border:1px solid var(--border-soft);
+  background: var(--bg-deep); cursor:pointer; transition: all .15s ease;
+}
+.lf-type-card .ic{ font-size:24px; margin-bottom:6px; }
+.lf-type-card .name{ font-size:12.5px; font-weight:700; color: var(--text-primary); }
+.lf-type-card:hover{ border-color: var(--border-glow); }
+.lf-type-card.selected{ border-color: var(--lens-cyan); background: rgba(0,242,254,0.06); box-shadow:0 0 0 1px var(--lens-cyan); }
+
+/* Texture upload dropzone */
+.lf-dropzone{
+  border:1.5px dashed var(--border-glow);
+  border-radius: var(--radius-lg);
+  padding:26px; text-align:center;
+  background: var(--bg-deep);
+  cursor:pointer; transition: all .15s ease;
+}
+.lf-dropzone:hover, .lf-dropzone.dragover{ border-color: var(--lens-cyan); background: rgba(0,242,254,0.04); }
+.lf-dropzone .ic{ font-size:30px; opacity:0.6; margin-bottom:8px; }
+.lf-dropzone .txt{ font-size:13px; color: var(--text-secondary); }
+.lf-dropzone .sub{ font-size:11.5px; color: var(--text-tertiary); margin-top:4px; }
+.lf-texture-preview{
+  width:64px; height:64px; margin:0 auto 10px;
+  border-radius: var(--radius-sm); overflow:hidden;
+  background: repeating-conic-gradient(#1a2236 0% 25%, #10162a 0% 50%) 50% / 14px 14px;
+  border:1px solid var(--border-soft);
+  image-rendering: pixelated;
+}
+.lf-texture-preview img{ width:100%; height:100%; object-fit:cover; image-rendering:pixelated; }
+
+.lf-override-list{ max-height:220px; overflow-y:auto; border:1px solid var(--border-soft); border-radius: var(--radius-md); }
+.lf-override-item{
+  display:flex; align-items:center; gap:10px;
+  padding:10px 12px; border-bottom:1px solid var(--border-soft);
+  cursor:pointer; transition: background .12s ease;
+}
+.lf-override-item:last-child{ border-bottom:none; }
+.lf-override-item:hover{ background: rgba(255,255,255,0.03); }
+.lf-override-item.selected{ background: rgba(0,242,254,0.07); }
+.lf-override-item .sw{ width:26px; height:26px; border-radius:5px; flex-shrink:0; border:1px solid var(--border-soft); }
+.lf-override-item .info .n{ font-size:13px; font-weight:600; color:#fff; }
+.lf-override-item .info .id{ font-size:11px; font-family:var(--font-mono); color: var(--text-tertiary); }
+.lf-override-item input[type=radio]{ margin-left:auto; accent-color: var(--lens-cyan); }
+
+/* 3D-ish preview stage for item/block hold simulation */
+.lf-preview-stage{
+  aspect-ratio:1/1; max-width:280px; margin:0 auto;
+  border-radius: var(--radius-lg);
+  background:
+    radial-gradient(ellipse at 50% 80%, rgba(0,242,254,0.1), transparent 60%),
+    linear-gradient(160deg, var(--bg-elevated), var(--bg-void));
+  border:1px solid var(--border-soft);
+  display:flex; align-items:center; justify-content:center;
+  position:relative; overflow:hidden;
+}
+.lf-preview-stage .held-item{
+  width:96px; height:96px;
+  image-rendering: pixelated;
+  filter: drop-shadow(0 10px 14px rgba(0,0,0,0.5));
+  transform: rotate(-8deg);
+  transition: transform .2s ease;
+}
+.lf-preview-stage:hover .held-item{ transform: rotate(-14deg) scale(1.04); }
+.lf-preview-stage .grid-floor{
+  position:absolute; bottom:0; left:0; right:0; height:40%;
+  background-image: linear-gradient(rgba(0,242,254,0.08) 1px, transparent 1px), linear-gradient(90deg, rgba(0,242,254,0.08) 1px, transparent 1px);
+  background-size:20px 20px;
+  mask-image: linear-gradient(to top, black, transparent);
+}
+.lf-preview-caption{ text-align:center; font-size:12px; color: var(--text-tertiary); margin-top:10px; }
+
+.lf-summary-block{
+  background: var(--bg-deep); border:1px solid var(--border-soft);
+  border-radius: var(--radius-md); padding:14px 16px; margin-bottom:14px;
+}
+.lf-summary-row{ display:flex; justify-content:space-between; padding:6px 0; font-size:13px; }
+.lf-summary-row .k{ color: var(--text-tertiary); }
+.lf-summary-row .v{ color:#fff; font-weight:600; text-align:right; }
+.lf-code-block{
+  background: var(--bg-void); border:1px solid var(--border-soft);
+  border-radius: var(--radius-md); padding:14px 16px;
+  font-family: var(--font-mono); font-size:12px; color: var(--lens-cyan);
+  white-space:pre-wrap; word-break:break-all; max-height:220px; overflow-y:auto;
+  line-height:1.6;
+}
+
+/* ============================================================
+   MY MODS PANEL
+   ============================================================ */
+.lf-mymods-tabs{ display:flex; gap:8px; margin-bottom:20px; }
+.lf-mymods-tab{
+  padding:9px 16px; border-radius: var(--radius-md);
+  font-size:13px; font-weight:700; color: var(--text-tertiary);
+  background: var(--bg-deep); border:1px solid var(--border-soft);
+}
+.lf-mymods-tab.active{ color:#001521; background: linear-gradient(120deg, var(--lens-cyan), var(--lens-blue)); border-color:transparent; }
+
+.lf-mymods-row{
+  display:flex; align-items:center; gap:14px;
+  padding:14px 16px; margin-bottom:10px;
+  background: var(--bg-panel); border:1px solid var(--border-soft);
+  border-radius: var(--radius-lg);
+}
+.lf-mymods-row .thumb{
+  width:56px; height:56px; border-radius: var(--radius-sm); flex-shrink:0;
+  background: var(--bg-elevated); overflow:hidden; display:flex; align-items:center; justify-content:center;
+}
+.lf-mymods-row .thumb img{ width:100%; height:100%; object-fit:cover; }
+.lf-mymods-row .info{ flex:1; min-width:0; }
+.lf-mymods-row .info .t{ font-weight:700; font-size:14px; color:#fff; }
+.lf-mymods-row .info .m{ font-size:12px; color: var(--text-tertiary); margin-top:2px; }
+.lf-status-pill{
+  padding:3px 10px; border-radius:999px; font-size:10.5px; font-weight:800; text-transform:uppercase; letter-spacing:0.03em;
+}
+.lf-status-pill.draft{ background: rgba(255,182,72,0.12); color: var(--warn); }
+.lf-status-pill.published{ background: rgba(51,227,154,0.12); color: var(--ok); }
+.lf-mymods-row .actions{ display:flex; gap:8px; flex-shrink:0; }
+
+/* ============================================================
+   TOASTS
+   ============================================================ */
+.lf-toast-stack{
+  position:fixed; bottom:22px; right:22px; z-index:1000;
+  display:flex; flex-direction:column; gap:10px; max-width:340px;
+}
+.lf-toast{
+  display:flex; align-items:flex-start; gap:10px;
+  padding:13px 16px;
+  background: var(--bg-elevated);
+  border:1px solid var(--border-soft);
+  border-left:3px solid var(--lens-cyan);
+  border-radius: var(--radius-md);
+  box-shadow: var(--shadow-panel);
+  font-size:13px; color: var(--text-primary);
+  animation: lf-toast-in .2s ease;
+}
+.lf-toast.ok{ border-left-color: var(--ok); }
+.lf-toast.error{ border-left-color: var(--danger); }
+.lf-toast.warn{ border-left-color: var(--warn); }
+@keyframes lf-toast-in{ from{ opacity:0; transform: translateX(20px); } to{ opacity:1; transform:translateX(0); } }
+
+.lf-spinner{
+  width:16px; height:16px; border-radius:50%;
+  border:2px solid rgba(255,255,255,0.2); border-top-color:#fff;
+  animation: lf-spin .7s linear infinite; flex-shrink:0;
+}
+@keyframes lf-spin{ to{ transform:rotate(360deg); } }
+
+.lf-loading-fill{ display:flex; align-items:center; justify-content:center; padding:60px; color:var(--text-tertiary); gap:10px; }
+
+/* Auth modal */
+.lf-auth-tabs{ display:flex; gap:6px; margin-bottom:20px; background: var(--bg-deep); padding:4px; border-radius: var(--radius-md); }
+.lf-auth-tab{ flex:1; padding:9px; text-align:center; border-radius:7px; font-size:13px; font-weight:700; color: var(--text-tertiary); }
+.lf-auth-tab.active{ background: var(--bg-elevated); color:#fff; }
+.lf-auth-divider{ display:flex; align-items:center; gap:10px; margin:16px 0; color: var(--text-tertiary); font-size:12px; }
+.lf-auth-divider::before, .lf-auth-divider::after{ content:""; flex:1; height:1px; background: var(--border-soft); }
+</style>
+<body>
+<div id="lf-app">
+
+  <!-- ============================================================
+       HEADER
+       ============================================================ -->
+  <header class="lf-header">
+    <div class="lf-header-left">
+      <a href="#/" class="lf-brand" data-route="/">
+        <span class="lf-mark">
+          <img src="assets/logo-header.png" alt="LegendsForce logo — a glowing pixel-glass letter L" width="129" height="160">
+        </span>
+        <span class="lf-brand-text">Legends<span class="accent">Force</span></span>
+      </a>
+
+      <button class="lf-nav-toggle" id="navToggle" aria-label="Toggle navigation" aria-expanded="false">☰</button>
+
+      <nav class="lf-nav" id="mainNav">
+        <a href="#/" data-route="/">Browse Mods</a>
+        <a href="#/my-mods" data-route="/my-mods">My Mods</a>
+      </nav>
+    </div>
+
+    <div class="lf-header-right">
+      <button class="lf-btn lf-btn-primary" id="createModBtn">
+        <span>➕</span> Create Mod
+      </button>
+
+      <!-- Signed-out state -->
+      <button class="lf-btn lf-btn-ghost" id="signInBtn">Sign In</button>
+
+      <!-- Signed-in profile menu -->
+      <div class="lf-profile" id="profileMenu" style="display:none;">
+        <button class="lf-avatar-btn" id="avatarBtn" aria-haspopup="true" aria-expanded="false">
+          <img id="avatarImg" src="" alt="" style="display:none;">
+          <span id="avatarInitial">?</span>
+        </button>
+        <div class="lf-dropdown" id="profileDropdown" role="menu">
+          <div class="lf-dropdown-header">
+            <div class="name" id="dropdownName">—</div>
+            <div class="email" id="dropdownEmail">—</div>
+          </div>
+          <button class="lf-dropdown-item" id="ddCreateMod" role="menuitem"><span class="ic">➕</span> Create Mod</button>
+          <button class="lf-dropdown-item" id="ddMyMods" role="menuitem"><span class="ic">📦</span> My Mods</button>
+          <button class="lf-dropdown-item danger" id="ddLogout" role="menuitem"><span class="ic">🚪</span> Log Out</button>
+        </div>
+      </div>
+    </div>
+  </header>
+
+  <!-- ============================================================
+       MAIN — routed views
+       ============================================================ -->
+  <main class="lf-main">
+
+    <!-- ---------- HOME / BROWSE VIEW ---------- -->
+    <section id="view-home" class="lf-view">
+      <div class="lf-hero">
+        <div class="lf-hero-glow"></div>
+        <h1>Build. Publish. <span class="accent">Play.</span></h1>
+        <p>LegendsForce is where the Play Legends community creates and shares <code>.lens</code> mods — blocks, items, and mobs, ready to drop into your world.</p>
+      </div>
+
+      <div class="lf-container">
+        <div class="lf-searchbar">
+          <div class="lf-search-input-wrap">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="7"/><path d="M21 21l-4.3-4.3"/></svg>
+            <input type="text" id="searchInput" placeholder="Search mods by name…" autocomplete="off">
+          </div>
+          <div class="lf-filter-chips" id="categoryChips">
+            <button class="lf-chip active" data-cat="all">All</button>
+            <button class="lf-chip" data-cat="blocks">🧱 Blocks</button>
+            <button class="lf-chip" data-cat="items">⚔️ Items</button>
+            <button class="lf-chip" data-cat="mobs">👾 Mobs</button>
+            <button class="lf-chip" data-cat="other">✨ Other</button>
+          </div>
+          <select class="lf-sort-select" id="sortSelect">
+            <option value="newest">Newest</option>
+            <option value="downloads">Most Downloaded</option>
+            <option value="likes">Most Liked</option>
+            <option value="updated">Recently Updated</option>
+          </select>
+        </div>
+
+        <div class="lf-results-meta">
+          <span id="resultsCount">Loading mods…</span>
+        </div>
+
+        <div class="lf-mod-grid" id="modGrid">
+          <!-- populated by JS -->
+        </div>
+      </div>
+    </section>
+
+    <!-- ---------- MOD DETAIL VIEW ---------- -->
+    <section id="view-detail" class="lf-view" style="display:none;">
+      <div class="lf-container" id="detailContainer">
+        <!-- populated by JS -->
+      </div>
+    </section>
+
+    <!-- ---------- MY MODS VIEW ---------- -->
+    <section id="view-mymods" class="lf-view" style="display:none;">
+      <div class="lf-container" style="padding-top:32px; padding-bottom:60px;">
+        <div style="display:flex; align-items:center; justify-content:space-between; flex-wrap:wrap; gap:12px; margin-bottom:22px;">
+          <h1 style="font-family:var(--font-display); font-size:24px; color:#fff;">My Mods</h1>
+          <button class="lf-btn lf-btn-primary" id="myModsCreateBtn">➕ Create Mod</button>
+        </div>
+        <div class="lf-mymods-tabs">
+          <button class="lf-mymods-tab active" data-status="all">All</button>
+          <button class="lf-mymods-tab" data-status="draft">Drafts</button>
+          <button class="lf-mymods-tab" data-status="published">Published</button>
+        </div>
+        <div id="myModsList"><!-- populated by JS --></div>
+      </div>
+    </section>
+
+  </main>
+
+  <footer class="lf-footer">
+    LegendsForce — a community mod platform for Play Legends. Not affiliated with Mojang.
+  </footer>
+</div>
+
+<!-- ============================================================
+     AUTH MODAL
+     ============================================================ -->
+<div class="lf-overlay" id="authOverlay">
+  <div class="lf-modal">
+    <div class="lf-modal-header">
+      <h2 id="authModalTitle">Sign In</h2>
+      <button class="lf-modal-close" id="authCloseBtn">✕</button>
+    </div>
+    <div class="lf-modal-body">
+      <div class="lf-auth-tabs">
+        <button class="lf-auth-tab active" data-authtab="signin">Sign In</button>
+        <button class="lf-auth-tab" data-authtab="signup">Create Account</button>
+      </div>
+
+      <form id="authForm">
+        <div class="lf-field" id="authNameField" style="display:none;">
+          <label>Display Name</label>
+          <input class="lf-input" type="text" id="authName" placeholder="ForgeMaster99" autocomplete="name">
+        </div>
+        <div class="lf-field">
+          <label>Email</label>
+          <input class="lf-input" type="email" id="authEmail" placeholder="you@example.com" required autocomplete="email">
+        </div>
+        <div class="lf-field">
+          <label>Password</label>
+          <input class="lf-input" type="password" id="authPassword" placeholder="••••••••" required autocomplete="current-password" minlength="6">
+        </div>
+        <div id="authError" style="display:none; color:var(--danger); font-size:12.5px; margin-bottom:14px;"></div>
+        <button type="submit" class="lf-btn lf-btn-primary lf-btn-block" id="authSubmitBtn">Sign In</button>
+      </form>
+
+      <div class="lf-auth-divider">or</div>
+      <button class="lf-btn lf-btn-ghost lf-btn-block" id="googleAuthBtn">
+        <svg width="16" height="16" viewBox="0 0 48 48"><path fill="#FFC107" d="M43.6 20.5H42V20H24v8h11.3c-1.6 4.6-6 8-11.3 8-6.6 0-12-5.4-12-12s5.4-12 12-12c3.1 0 5.9 1.2 8 3.1l5.7-5.7C34.6 6 29.6 4 24 4 12.9 4 4 12.9 4 24s8.9 20 20 20 20-8.9 20-20c0-1.3-.1-2.7-.4-3.5z"/><path fill="#FF3D00" d="M6.3 14.7l6.6 4.8C14.6 15.9 18.9 13 24 13c3.1 0 5.9 1.2 8 3.1l5.7-5.7C34.6 6 29.6 4 24 4 16.3 4 9.7 8.3 6.3 14.7z"/><path fill="#4CAF50" d="M24 44c5.5 0 10.4-1.9 14.2-5.1l-6.6-5.4C29.6 35.4 27 36 24 36c-5.2 0-9.7-3.4-11.3-8.1l-6.6 5.1C9.6 39.6 16.3 44 24 44z"/><path fill="#1976D2" d="M43.6 20.5H42V20H24v8h11.3c-.8 2.3-2.3 4.3-4.2 5.6l6.6 5.4C41.9 35.9 44 30.4 44 24c0-1.3-.1-2.7-.4-3.5z"/></svg>
+        Continue with Google
+      </button>
+    </div>
+  </div>
+</div>
+
+<!-- ============================================================
+     TOAST STACK
+     ============================================================ -->
+<div class="lf-toast-stack" id="toastStack"></div>
+
+<!-- Lightbox for screenshots -->
+<div class="lf-overlay" id="lightboxOverlay">
+  <div style="max-width:90vw; max-height:90vh;">
+    <img id="lightboxImg" src="" alt="" style="max-width:90vw; max-height:90vh; border-radius:12px; border:1px solid var(--border-soft);">
+  </div>
+</div>
+
+</body>
+<!-- ============================================================
+     CREATE / EDIT MOD MODAL — multistep editor
+     ============================================================ -->
+<div class="lf-overlay" id="editorOverlay">
+  <div class="lf-modal lf-modal-wide">
+    <div class="lf-modal-header">
+      <h2 id="editorModalTitle">Create Mod Item</h2>
+      <button class="lf-modal-close" id="editorCloseBtn">✕</button>
+    </div>
+
+    <div class="lf-editor-layout">
+      <aside class="lf-editor-sidebar">
+        <div class="lf-editor-step active" data-step="1"><span class="num">1</span> Basics</div>
+        <div class="lf-editor-step" data-step="2"><span class="num">2</span> Type &amp; ID</div>
+        <div class="lf-editor-step" data-step="3"><span class="num">3</span> Texture</div>
+        <div class="lf-editor-step" data-step="4"><span class="num">4</span> Preview</div>
+        <div class="lf-editor-step" data-step="5"><span class="num">5</span> Review &amp; Save</div>
+      </aside>
+
+      <div class="lf-editor-main">
+
+        <!-- STEP 1 — Basics -->
+        <div class="lf-editor-panel active" data-panel="1">
+          <div class="lf-field">
+            <label>Mod Name</label>
+            <input class="lf-input" id="modName" type="text" placeholder="e.g. Sapphire Tools">
+            <div class="hint">The name of your overall mod project (can contain multiple items later).</div>
+          </div>
+          <div class="lf-field">
+            <label>Namespace (mod ID prefix)</label>
+            <input class="lf-input" id="modNamespace" type="text" placeholder="e.g. mod, legends, sapphire">
+            <div class="hint">Your own short prefix — not required to be "legends". This becomes the part before the colon, e.g. <code>mod:kilic</code>.</div>
+          </div>
+          <div class="lf-field">
+            <label>Item / Block Display Name</label>
+            <input class="lf-input" id="entryDisplayName" type="text" placeholder="e.g. Mavi Blok">
+          </div>
+          <div class="lf-field">
+            <label>Short Description</label>
+            <textarea class="lf-textarea" id="entryShortDesc" placeholder="One or two sentences describing this item/block…" rows="3"></textarea>
+          </div>
+        </div>
+
+        <!-- STEP 2 — Type & System ID -->
+        <div class="lf-editor-panel" data-panel="2">
+          <div class="lf-field">
+            <label>Entry Type</label>
+            <div class="lf-type-grid" id="typeGrid">
+              <div class="lf-type-card selected" data-type="item"><div class="ic">⚔️</div><div class="name">Item</div></div>
+              <div class="lf-type-card" data-type="block"><div class="ic">🧱</div><div class="name">Block</div></div>
+              <div class="lf-type-card" data-type="mob"><div class="ic">👾</div><div class="name">Mob</div></div>
+            </div>
+          </div>
+
+          <div class="lf-field">
+            <label>System / Command ID</label>
+            <div class="hint" style="margin-bottom:8px;">Auto-generated from your namespace + display name — lowercased, special characters stripped, spaces become underscores. This is the ID used with <code>/give</code>.</div>
+            <div class="lf-id-preview">
+              <span class="label">/give @s</span>
+              <span class="code" id="systemIdPreview">namespace:item_id</span>
+            </div>
+          </div>
+
+          <div class="lf-field">
+            <label>Category</label>
+            <select class="lf-select" id="entryCategory">
+              <option value="items">Items</option>
+              <option value="blocks">Blocks</option>
+              <option value="mobs">Mobs</option>
+              <option value="other">Other</option>
+            </select>
+          </div>
+        </div>
+
+        <!-- STEP 3 — Texture -->
+        <div class="lf-editor-panel" data-panel="3">
+          <div class="lf-field">
+            <label>Texture Source</label>
+            <div class="lf-radio-cards" id="textureModeCards">
+              <label class="lf-radio-card checked" data-mode="upload">
+                <input type="radio" name="textureMode" value="upload" checked>
+                <div class="title">🖼️ Upload New</div>
+                <div class="desc">Upload your own texture image</div>
+              </label>
+              <label class="lf-radio-card" data-mode="override">
+                <input type="radio" name="textureMode" value="override">
+                <div class="title">♻️ Override Vanilla</div>
+                <div class="desc">Reskin an existing block/item</div>
+              </label>
+            </div>
+          </div>
+
+          <div id="uploadModePanel">
+            <div class="lf-dropzone" id="textureDropzone">
+              <input type="file" id="textureFileInput" accept="image/png,image/jpeg,image/webp" style="display:none;">
+              <div id="dropzoneEmpty">
+                <div class="ic">📤</div>
+                <div class="txt">Click or drag a texture image here</div>
+                <div class="sub">PNG recommended · 16×16 or 32×32 · max 1MB</div>
+              </div>
+              <div id="dropzoneFilled" style="display:none;">
+                <div class="lf-texture-preview"><img id="texturePreviewImg" src="" alt=""></div>
+                <div class="txt" id="textureFileName">texture.png</div>
+                <button type="button" class="lf-btn lf-btn-ghost lf-btn-sm" id="textureRemoveBtn" style="margin-top:10px;">Remove</button>
+              </div>
+            </div>
+          </div>
+
+          <div id="overrideModePanel" style="display:none;">
+            <div class="lf-field">
+              <label>Search vanilla blocks/items</label>
+              <input class="lf-input" id="overrideSearch" type="text" placeholder="Search…">
+            </div>
+            <div class="lf-override-list" id="overrideList"><!-- populated by JS --></div>
+          </div>
+        </div>
+
+        <!-- STEP 4 — Preview -->
+        <div class="lf-editor-panel" data-panel="4">
+          <label style="display:block; font-size:12.5px; font-weight:700; color:var(--text-secondary); margin-bottom:14px; text-transform:uppercase; letter-spacing:0.03em;">In-Hand Preview</label>
+          <div class="lf-preview-stage">
+            <div class="grid-floor"></div>
+            <img class="held-item" id="heldItemPreview" src="" alt="">
+          </div>
+          <div class="lf-preview-caption">Simulated preview of how this item looks held in-game. Actual in-game rendering may vary slightly.</div>
+        </div>
+
+        <!-- STEP 5 — Review -->
+        <div class="lf-editor-panel" data-panel="5">
+          <div class="lf-summary-block" id="reviewSummary"><!-- populated by JS --></div>
+          <label style="display:block; font-size:12.5px; font-weight:700; color:var(--text-secondary); margin-bottom:8px; text-transform:uppercase; letter-spacing:0.03em;">.lens Preview</label>
+          <div class="lf-code-block" id="lensCodePreview"></div>
+        </div>
+
+      </div>
+    </div>
+
+    <div class="lf-modal-footer">
+      <button class="lf-btn lf-btn-ghost" id="editorBackBtn" style="display:none;">← Back</button>
+      <div style="flex:1;"></div>
+      <button class="lf-btn lf-btn-ghost" id="editorSaveDraftBtn">Save as Draft</button>
+      <button class="lf-btn lf-btn-primary" id="editorNextBtn">Next →</button>
+    </div>
+  </div>
+</div>
+
+<!-- ============================================================
+     PUBLISH MODAL
+     ============================================================ -->
+<div class="lf-overlay" id="publishOverlay">
+  <div class="lf-modal lf-modal-wide">
+    <div class="lf-modal-header">
+      <h2>Publish Mod</h2>
+      <button class="lf-modal-close" id="publishCloseBtn">✕</button>
+    </div>
+    <div class="lf-modal-body">
+      <div class="lf-field">
+        <label>Mod Icon</label>
+        <div class="lf-dropzone" id="iconDropzone" style="padding:16px;">
+          <input type="file" id="iconFileInput" accept="image/png,image/jpeg" style="display:none;">
+          <div id="iconDropzoneEmpty"><div class="ic">🖼️</div><div class="txt">Upload a mod icon (square, ideally 256×256)</div></div>
+          <div id="iconDropzoneFilled" style="display:none;">
+            <div class="lf-texture-preview" style="width:80px; height:80px;"><img id="iconPreviewImg" src="" alt=""></div>
+          </div>
+        </div>
+      </div>
+
+      <div class="lf-field">
+        <label>Full Description</label>
+        <div class="hint" style="margin-bottom:8px;">Rich text supported — you can add images inline. This is what players see on your mod's page.</div>
+        <div id="descToolbar" style="display:flex; gap:6px; margin-bottom:8px;">
+          <button type="button" class="lf-btn lf-btn-ghost lf-btn-sm" data-cmd="bold"><b>B</b></button>
+          <button type="button" class="lf-btn lf-btn-ghost lf-btn-sm" data-cmd="italic"><i>I</i></button>
+          <button type="button" class="lf-btn lf-btn-ghost lf-btn-sm" data-cmd="insertUnorderedList">• List</button>
+          <button type="button" class="lf-btn lf-btn-ghost lf-btn-sm" data-cmd="formatBlock" data-arg="H3">H3</button>
+          <button type="button" class="lf-btn lf-btn-ghost lf-btn-sm" id="descImgBtn">🖼️ Insert Image</button>
+          <input type="file" id="descImgInput" accept="image/*" style="display:none;">
+        </div>
+        <div class="lf-textarea" id="descEditor" contenteditable="true" style="min-height:160px; overflow-y:auto; max-height:280px;" data-placeholder="Describe what your mod does…"></div>
+      </div>
+
+      <div class="lf-field">
+        <label>Screenshots (optional)</label>
+        <div class="lf-dropzone" id="screenshotsDropzone" style="padding:16px;">
+          <input type="file" id="screenshotsInput" accept="image/*" multiple style="display:none;">
+          <div class="txt">Click or drag to add screenshots</div>
+        </div>
+        <div class="lf-screenshot-strip" id="screenshotsPreview" style="margin-top:10px;"></div>
+      </div>
+
+      <div class="lf-field">
+        <label>Version Notes</label>
+        <textarea class="lf-textarea" id="versionNotes" placeholder="What's new in this version? (e.g. Initial release, Fixed texture bug…)" rows="3"></textarea>
+      </div>
+
+      <div class="lf-checkbox-row" style="margin-top:6px;">
+        <input type="checkbox" id="publishConfirmCheck">
+        <label for="publishConfirmCheck">I confirm this mod follows LegendsForce community guidelines.</label>
+      </div>
+    </div>
+    <div class="lf-modal-footer">
+      <button class="lf-btn lf-btn-ghost" id="publishCancelBtn">Cancel</button>
+      <button class="lf-btn lf-btn-primary" id="publishSubmitBtn">🚀 Publish Mod</button>
+    </div>
+  </div>
+</div>
+<script>
+/* ============================================================
+   LEGENDSFORCE — CORE MODULE
+   Firebase init, Auth, Router, Toasts, Global State
+   Separate Firebase project from playlegendshub.vercel.app,
+   but identical Firestore/Storage security rule *shape* so the
+   two projects can be kept in sync operationally.
+   ============================================================ */
+(function () {
+  "use strict";
+
+  // ------------------------------------------------------------
+  // FIREBASE CONFIG
+  // Separate project for LegendsForce (site: legendsforce.vercel.app).
+  // Replace these placeholder values with the real config from the
+  // Firebase console for the "legendsforce" project before deploying.
+  // Firestore/Storage security rules should mirror play-legends'
+  // rules 1:1 (same collection permission shape, new collection
+  // names below under "FIRESTORE SCHEMA").
+  // ------------------------------------------------------------
+  const firebaseConfig = {
+    apiKey: "REPLACE_WITH_LEGENDSFORCE_API_KEY",
+    authDomain: "legendsforce.firebaseapp.com",
+    projectId: "legendsforce",
+    storageBucket: "legendsforce.appspot.com",
+    messagingSenderId: "REPLACE_WITH_SENDER_ID",
+    appId: "REPLACE_WITH_APP_ID"
+  };
+
+  firebase.initializeApp(firebaseConfig);
+  const auth = firebase.auth();
+  const db = firebase.firestore();
+  const storage = firebase.storage();
+
+  // Expose for other inline modules
+  window.LF = window.LF || {};
+  window.LF.auth = auth;
+  window.LF.db = db;
+  window.LF.storage = storage;
+  window.LF.currentUser = null;
+  window.LF.currentProfile = null;
+
+  /* ============================================================
+     FIRESTORE SCHEMA (mirrors play-legends rule shape)
+     ------------------------------------------------------------
+     users/{uid}                     — { displayName, email, photoURL, createdAt }
+     mods/{modId}                    — {
+                                          ownerId, ownerName, name, namespace,
+                                          category, shortDesc, description (html),
+                                          iconURL, screenshots: [url,...],
+                                          status: "draft" | "published",
+                                          downloads, likes,
+                                          createdAt, updatedAt
+                                        }
+     mods/{modId}/files/{fileId}     — {
+                                          version, notes, lensDataURL / storagePath,
+                                          createdAt, downloads
+                                        }
+     mods/{modId}/comments/{id}      — { authorId, authorName, text, createdAt }
+     mods/{modId}/likes/{uid}        — { likedAt }   (existence = liked)
+     ============================================================ */
+
+  // ------------------------------------------------------------
+  // TOASTS
+  // ------------------------------------------------------------
+  function showToast(message, type) {
+    type = type || "info";
+    const stack = document.getElementById("toastStack");
+    if (!stack) return;
+    const el = document.createElement("div");
+    el.className = "lf-toast " + type;
+    const icon = type === "ok" ? "✅" : type === "error" ? "⚠️" : type === "warn" ? "🔔" : "ℹ️";
+    el.innerHTML = '<span>' + icon + '</span><span>' + escapeHTML(message) + '</span>';
+    stack.appendChild(el);
+    setTimeout(function () {
+      el.style.transition = "opacity .25s ease, transform .25s ease";
+      el.style.opacity = "0";
+      el.style.transform = "translateX(20px)";
+      setTimeout(function () { el.remove(); }, 260);
+    }, 3800);
+  }
+  window.LF.toast = showToast;
+
+  function escapeHTML(str) {
+    const d = document.createElement("div");
+    d.textContent = str == null ? "" : String(str);
+    return d.innerHTML;
+  }
+  window.LF.escapeHTML = escapeHTML;
+
+  // ------------------------------------------------------------
+  // SANITIZATION HELPERS (used by the editor for system IDs)
+  // ------------------------------------------------------------
+  function sanitizeIdPart(raw) {
+    return (raw || "")
+      .toLowerCase()
+      .trim()
+      .normalize("NFKD").replace(/[\u0300-\u036f]/g, "") // strip accents (İ->i, ş->s handled below too)
+      .replace(/ğ/g, "g").replace(/ü/g, "u").replace(/ş/g, "s").replace(/ı/g, "i").replace(/ö/g, "o").replace(/ç/g, "c")
+      .replace(/[^a-z0-9_ ]/g, "")   // strip special chars, keep spaces to convert next
+      .trim()
+      .replace(/\s+/g, "_")
+      .replace(/_+/g, "_")
+      .replace(/^_+|_+$/g, "");
+  }
+  window.LF.sanitizeIdPart = sanitizeIdPart;
+
+  // ------------------------------------------------------------
+  // AUTH STATE
+  // ------------------------------------------------------------
+  auth.onAuthStateChanged(function (user) {
+    window.LF.currentUser = user;
+    const profileMenu = document.getElementById("profileMenu");
+    const signInBtn = document.getElementById("signInBtn");
+
+    if (user) {
+      profileMenu.style.display = "block";
+      signInBtn.style.display = "none";
+
+      const initial = (user.displayName || user.email || "?").trim().charAt(0).toUpperCase();
+      document.getElementById("avatarInitial").textContent = initial;
+      document.getElementById("dropdownName").textContent = user.displayName || "Unnamed Builder";
+      document.getElementById("dropdownEmail").textContent = user.email || "";
+
+      if (user.photoURL) {
+        const img = document.getElementById("avatarImg");
+        img.src = user.photoURL;
+        img.style.display = "block";
+        document.getElementById("avatarInitial").style.display = "none";
+      }
+
+      // Ensure users/{uid} doc exists
+      db.collection("users").doc(user.uid).set({
+        displayName: user.displayName || (user.email ? user.email.split("@")[0] : "Builder"),
+        email: user.email || "",
+        photoURL: user.photoURL || "",
+        updatedAt: firebase.firestore.FieldValue.serverTimestamp()
+      }, { merge: true }).catch(function (e) { console.warn("profile sync failed", e); });
+
+      window.LF.currentProfile = {
+        displayName: user.displayName || (user.email ? user.email.split("@")[0] : "Builder")
+      };
+    } else {
+      profileMenu.style.display = "none";
+      signInBtn.style.display = "inline-flex";
+      window.LF.currentProfile = null;
+    }
+
+    // Notify other modules (mod grid "My Mods" visibility, etc.)
+    document.dispatchEvent(new CustomEvent("lf:authchange", { detail: { user: user } }));
+  });
+
+  function requireAuth(actionLabel) {
+    if (window.LF.currentUser) return true;
+    showToast((actionLabel || "This action") + " requires signing in.", "warn");
+    openAuthModal("signin");
+    return false;
+  }
+  window.LF.requireAuth = requireAuth;
+
+  // ------------------------------------------------------------
+  // AUTH MODAL
+  // ------------------------------------------------------------
+  const authOverlay = document.getElementById("authOverlay");
+  const authForm = document.getElementById("authForm");
+  const authError = document.getElementById("authError");
+  const authNameField = document.getElementById("authNameField");
+  const authSubmitBtn = document.getElementById("authSubmitBtn");
+  const authModalTitle = document.getElementById("authModalTitle");
+  let authMode = "signin";
+
+  function openAuthModal(mode) {
+    authMode = mode || "signin";
+    setAuthTab(authMode);
+    authError.style.display = "none";
+    authOverlay.classList.add("open");
+  }
+  window.LF.openAuthModal = openAuthModal;
+
+  function closeAuthModal() {
+    authOverlay.classList.remove("open");
+    authForm.reset();
+    authError.style.display = "none";
+  }
+
+  function setAuthTab(mode) {
+    authMode = mode;
+    document.querySelectorAll(".lf-auth-tab").forEach(function (t) {
+      t.classList.toggle("active", t.dataset.authtab === mode);
+    });
+    authNameField.style.display = mode === "signup" ? "block" : "none";
+    authModalTitle.textContent = mode === "signup" ? "Create Account" : "Sign In";
+    authSubmitBtn.textContent = mode === "signup" ? "Create Account" : "Sign In";
+  }
+
+  document.querySelectorAll(".lf-auth-tab").forEach(function (tab) {
+    tab.addEventListener("click", function () { setAuthTab(tab.dataset.authtab); });
+  });
+
+  document.getElementById("signInBtn").addEventListener("click", function () { openAuthModal("signin"); });
+  document.getElementById("authCloseBtn").addEventListener("click", closeAuthModal);
+  authOverlay.addEventListener("click", function (e) { if (e.target === authOverlay) closeAuthModal(); });
+
+  authForm.addEventListener("submit", function (e) {
+    e.preventDefault();
+    const email = document.getElementById("authEmail").value.trim();
+    const password = document.getElementById("authPassword").value;
+    const name = document.getElementById("authName").value.trim();
+    authError.style.display = "none";
+    authSubmitBtn.disabled = true;
+    authSubmitBtn.innerHTML = '<span class="lf-spinner" style="border-top-color:#001521;border-color:rgba(0,0,0,0.25);"></span>';
+
+    const done = function () {
+      authSubmitBtn.disabled = false;
+      authSubmitBtn.textContent = authMode === "signup" ? "Create Account" : "Sign In";
+    };
+
+    if (authMode === "signup") {
+      auth.createUserWithEmailAndPassword(email, password)
+        .then(function (cred) {
+          return cred.user.updateProfile({ displayName: name || email.split("@")[0] }).then(function(){ return cred.user.reload(); });
+        })
+        .then(function () {
+          showToast("Welcome to LegendsForce!", "ok");
+          closeAuthModal();
+        })
+        .catch(function (err) { authError.textContent = friendlyAuthError(err); authError.style.display = "block"; })
+        .finally(done);
+    } else {
+      auth.signInWithEmailAndPassword(email, password)
+        .then(function () { showToast("Signed in.", "ok"); closeAuthModal(); })
+        .catch(function (err) { authError.textContent = friendlyAuthError(err); authError.style.display = "block"; })
+        .finally(done);
+    }
+  });
+
+  document.getElementById("googleAuthBtn").addEventListener("click", function () {
+    const provider = new firebase.auth.GoogleAuthProvider();
+    auth.signInWithPopup(provider)
+      .then(function () { showToast("Signed in with Google.", "ok"); closeAuthModal(); })
+      .catch(function (err) { authError.textContent = friendlyAuthError(err); authError.style.display = "block"; });
+  });
+
+  function friendlyAuthError(err) {
+    const map = {
+      "auth/email-already-in-use": "That email is already registered — try signing in instead.",
+      "auth/invalid-email": "That email address doesn't look right.",
+      "auth/weak-password": "Password should be at least 6 characters.",
+      "auth/user-not-found": "No account found with that email.",
+      "auth/wrong-password": "Incorrect password.",
+      "auth/invalid-credential": "Incorrect email or password.",
+      "auth/popup-closed-by-user": "Sign-in popup was closed before completing."
+    };
+    return map[err.code] || (err.message || "Something went wrong. Please try again.");
+  }
+
+  document.getElementById("ddLogout").addEventListener("click", function () {
+    auth.signOut().then(function () { showToast("Logged out.", "ok"); navigate("/"); });
+  });
+
+  // ------------------------------------------------------------
+  // PROFILE DROPDOWN
+  // ------------------------------------------------------------
+  const avatarBtn = document.getElementById("avatarBtn");
+  const profileDropdown = document.getElementById("profileDropdown");
+  avatarBtn.addEventListener("click", function (e) {
+    e.stopPropagation();
+    const open = profileDropdown.classList.toggle("open");
+    avatarBtn.setAttribute("aria-expanded", open ? "true" : "false");
+  });
+  document.addEventListener("click", function (e) {
+    if (!profileDropdown.contains(e.target) && e.target !== avatarBtn) {
+      profileDropdown.classList.remove("open");
+    }
+  });
+  document.getElementById("ddCreateMod").addEventListener("click", function () {
+    profileDropdown.classList.remove("open");
+    window.LF.openEditor();
+  });
+  document.getElementById("ddMyMods").addEventListener("click", function () {
+    profileDropdown.classList.remove("open");
+    navigate("/my-mods");
+  });
+
+  // ------------------------------------------------------------
+  // MOBILE NAV
+  // ------------------------------------------------------------
+  document.getElementById("navToggle").addEventListener("click", function () {
+    const nav = document.getElementById("mainNav");
+    const open = nav.classList.toggle("mobile-open");
+    this.setAttribute("aria-expanded", open ? "true" : "false");
+  });
+
+  // ------------------------------------------------------------
+  // ROUTER (hash-based, simple)
+  // ------------------------------------------------------------
+  const views = {
+    "/": "view-home",
+    "/my-mods": "view-mymods"
+  };
+
+  function navigate(path) {
+    window.location.hash = "#" + path;
+  }
+  window.LF.navigate = navigate;
+
+  function renderRoute() {
+    const hash = window.location.hash.replace(/^#/, "") || "/";
+    document.getElementById("mainNav").classList.remove("mobile-open");
+
+    // Mod detail route: /mod/{id}
+    const modMatch = hash.match(/^\/mod\/([^/]+)$/);
+
+    Object.values(views).forEach(function (id) {
+      document.getElementById(id).style.display = "none";
+    });
+    document.getElementById("view-detail").style.display = "none";
+
+    document.querySelectorAll(".lf-nav a").forEach(function (a) {
+      a.classList.toggle("active", a.dataset.route === hash || (hash === "/" && a.dataset.route === "/"));
+    });
+
+    if (modMatch) {
+      document.getElementById("view-detail").style.display = "block";
+      window.dispatchEvent(new CustomEvent("lf:route:detail", { detail: { modId: modMatch[1] } }));
+      window.scrollTo(0, 0);
+      return;
+    }
+
+    const viewId = views[hash] || "view-home";
+    document.getElementById(viewId).style.display = "block";
+    window.scrollTo(0, 0);
+
+    if (viewId === "view-home") window.dispatchEvent(new CustomEvent("lf:route:home"));
+    if (viewId === "view-mymods") {
+      if (!window.LF.currentUser) {
+        showToast("Sign in to view your mods.", "warn");
+        navigate("/");
+        openAuthModal("signin");
+        return;
+      }
+      window.dispatchEvent(new CustomEvent("lf:route:mymods"));
+    }
+  }
+  window.addEventListener("hashchange", renderRoute);
+  document.addEventListener("DOMContentLoaded", renderRoute);
+  if (document.readyState !== "loading") renderRoute();
+
+})();
+</script>
+<script>
+/* ============================================================
+   VANILLA ITEM/BLOCK REGISTRY
+   Used by the editor's "Override Vanilla" mode. This is a
+   representative subset — extend as the base game's registry
+   grows. Swatches are approximate placeholder colors standing
+   in for real vanilla textures.
+   ============================================================ */
+(function () {
+  "use strict";
+  window.LF = window.LF || {};
+
+  window.LF.VANILLA_REGISTRY = [
+    { id: "minecraft:stone", name: "Stone", color: "#8a8a8a", type: "block" },
+    { id: "minecraft:dirt", name: "Dirt", color: "#6b4a2f", type: "block" },
+    { id: "minecraft:oak_planks", name: "Oak Planks", color: "#b48a4e", type: "block" },
+    { id: "minecraft:cobblestone", name: "Cobblestone", color: "#767676", type: "block" },
+    { id: "minecraft:glass", name: "Glass", color: "#dff2ff", type: "block" },
+    { id: "minecraft:iron_block", name: "Block of Iron", color: "#e6e6e6", type: "block" },
+    { id: "minecraft:gold_block", name: "Block of Gold", color: "#fcd94a", type: "block" },
+    { id: "minecraft:diamond_block", name: "Block of Diamond", color: "#63e8e0", type: "block" },
+    { id: "minecraft:emerald_block", name: "Block of Emerald", color: "#3ed46b", type: "block" },
+    { id: "minecraft:obsidian", name: "Obsidian", color: "#1b1329", type: "block" },
+    { id: "minecraft:sand", name: "Sand", color: "#e0d19a", type: "block" },
+    { id: "minecraft:wool_white", name: "White Wool", color: "#f2f2f2", type: "block" },
+    { id: "minecraft:wooden_sword", name: "Wooden Sword", color: "#b48a4e", type: "item" },
+    { id: "minecraft:iron_sword", name: "Iron Sword", color: "#dcdcdc", type: "item" },
+    { id: "minecraft:diamond_sword", name: "Diamond Sword", color: "#63e8e0", type: "item" },
+    { id: "minecraft:iron_pickaxe", name: "Iron Pickaxe", color: "#c9c9c9", type: "item" },
+    { id: "minecraft:diamond_pickaxe", name: "Diamond Pickaxe", color: "#5be0d8", type: "item" },
+    { id: "minecraft:bow", name: "Bow", color: "#8a6535", type: "item" },
+    { id: "minecraft:shield", name: "Shield", color: "#96693c", type: "item" },
+    { id: "minecraft:apple", name: "Apple", color: "#d43b3b", type: "item" },
+    { id: "minecraft:golden_apple", name: "Golden Apple", color: "#fcd94a", type: "item" },
+    { id: "minecraft:bread", name: "Bread", color: "#c9974f", type: "item" },
+    { id: "minecraft:potion", name: "Potion", color: "#c23bd4", type: "item" },
+    { id: "minecraft:zombie", name: "Zombie", color: "#4c8a4c", type: "mob" },
+    { id: "minecraft:skeleton", name: "Skeleton", color: "#d8d8ce", type: "mob" },
+    { id: "minecraft:creeper", name: "Creeper", color: "#4caf50", type: "mob" },
+    { id: "minecraft:cow", name: "Cow", color: "#4a3627", type: "mob" },
+    { id: "minecraft:pig", name: "Pig", color: "#f0a3b1", type: "mob" }
+  ];
+})();
+</script>
+
+<script>
+/* ============================================================
+   HOME / BROWSE MODULE
+   Search, category filter, sort, Firestore fetch, card render
+   ============================================================ */
+(function () {
+  "use strict";
+  const db = function () { return window.LF.db; };
+
+  let allMods = [];         // cached from last fetch
+  let currentCategory = "all";
+  let currentSort = "newest";
+  let currentQuery = "";
+  let unsub = null;
+
+  function fmtCount(n) {
+    n = n || 0;
+    if (n >= 1000000) return (n / 1000000).toFixed(1).replace(/\.0$/, "") + "M";
+    if (n >= 1000) return (n / 1000).toFixed(1).replace(/\.0$/, "") + "K";
+    return String(n);
+  }
+
+  function timeAgo(ts) {
+    if (!ts) return "recently";
+    const date = ts.toDate ? ts.toDate() : new Date(ts);
+    const secs = Math.floor((Date.now() - date.getTime()) / 1000);
+    if (secs < 60) return "just now";
+    if (secs < 3600) return Math.floor(secs / 60) + "m ago";
+    if (secs < 86400) return Math.floor(secs / 3600) + "h ago";
+    if (secs < 2592000) return Math.floor(secs / 86400) + "d ago";
+    return date.toLocaleDateString();
+  }
+  window.LF.timeAgo = timeAgo;
+  window.LF.fmtCount = fmtCount;
+
+  const CATEGORY_LABELS = { blocks: "🧱 Blocks", items: "⚔️ Items", mobs: "👾 Mobs", other: "✨ Other" };
+
+  function renderSkeletons() {
+    const grid = document.getElementById("modGrid");
+    let html = "";
+    for (let i = 0; i < 8; i++) {
+      html += '<div class="lf-mod-card"><div class="lf-skeleton" style="aspect-ratio:16/10;"></div><div style="padding:14px 16px;"><div class="lf-skeleton" style="height:16px; width:70%; margin-bottom:10px;"></div><div class="lf-skeleton" style="height:12px; width:40%;"></div></div></div>';
+    }
+    grid.innerHTML = html;
+  }
+
+  function cardHTML(mod) {
+    const icon = mod.iconURL
+      ? '<img src="' + window.LF.escapeHTML(mod.iconURL) + '" alt="" loading="lazy">'
+      : '<div class="fallback-icon">📦</div>';
+    const catLabel = CATEGORY_LABELS[mod.category] || "✨ Other";
+    return (
+      '<a href="#/mod/' + mod.id + '" class="lf-mod-card" data-mod-id="' + mod.id + '">' +
+        '<div class="lf-mod-card-media">' + icon + '<span class="lf-mod-card-cat">' + catLabel + '</span></div>' +
+        '<div class="lf-mod-card-body">' +
+          '<div class="lf-mod-card-title">' + window.LF.escapeHTML(mod.name) + '</div>' +
+          '<div class="lf-mod-card-author">by ' + window.LF.escapeHTML(mod.ownerName || "Unknown") + '</div>' +
+          '<div class="lf-mod-card-desc">' + window.LF.escapeHTML(mod.shortDesc || "No description provided.") + '</div>' +
+          '<div class="lf-mod-card-stats">' +
+            '<div class="stat-group">' +
+              '<span class="stat">⬇ ' + fmtCount(mod.downloads) + '</span>' +
+              '<span class="stat">❤ ' + fmtCount(mod.likes) + '</span>' +
+            '</div>' +
+            '<span>' + timeAgo(mod.updatedAt || mod.createdAt) + '</span>' +
+          '</div>' +
+        '</div>' +
+      '</a>'
+    );
+  }
+
+  function applyFiltersAndRender() {
+    let list = allMods.slice();
+
+    if (currentCategory !== "all") {
+      list = list.filter(function (m) { return m.category === currentCategory; });
+    }
+    if (currentQuery.trim()) {
+      const q = currentQuery.trim().toLowerCase();
+      list = list.filter(function (m) {
+        return (m.name || "").toLowerCase().includes(q) || (m.shortDesc || "").toLowerCase().includes(q);
+      });
+    }
+
+    list.sort(function (a, b) {
+      if (currentSort === "downloads") return (b.downloads || 0) - (a.downloads || 0);
+      if (currentSort === "likes") return (b.likes || 0) - (a.likes || 0);
+      if (currentSort === "updated") return tsMillis(b.updatedAt) - tsMillis(a.updatedAt);
+      return tsMillis(b.createdAt) - tsMillis(a.createdAt); // newest
+    });
+
+    const grid = document.getElementById("modGrid");
+    const countEl = document.getElementById("resultsCount");
+
+    if (list.length === 0) {
+      grid.innerHTML =
+        '<div class="lf-empty-state">' +
+          '<div class="ic">🔍</div>' +
+          '<h3>No mods found</h3>' +
+          '<p>Try a different search term or category.</p>' +
+        '</div>';
+      countEl.textContent = "0 mods found";
+      return;
+    }
+
+    grid.innerHTML = list.map(cardHTML).join("");
+    countEl.textContent = list.length + (list.length === 1 ? " mod found" : " mods found");
+  }
+
+  function tsMillis(ts) {
+    if (!ts) return 0;
+    return ts.toDate ? ts.toDate().getTime() : new Date(ts).getTime();
+  }
+
+  function fetchPublishedMods() {
+    renderSkeletons();
+    document.getElementById("resultsCount").textContent = "Loading mods…";
+    if (unsub) { unsub(); unsub = null; }
+
+    unsub = window.LF.db.collection("mods")
+      .where("status", "==", "published")
+      .orderBy("createdAt", "desc")
+      .limit(100)
+      .onSnapshot(function (snap) {
+        allMods = snap.docs.map(function (d) { return Object.assign({ id: d.id }, d.data()); });
+        applyFiltersAndRender();
+      }, function (err) {
+        console.error("mods fetch failed", err);
+        document.getElementById("modGrid").innerHTML =
+          '<div class="lf-empty-state"><div class="ic">⚠️</div><h3>Couldn\'t load mods</h3><p>Check your connection and try again.</p></div>';
+        document.getElementById("resultsCount").textContent = "";
+      });
+  }
+
+  // ---- wire up UI ----
+  document.getElementById("searchInput").addEventListener("input", function (e) {
+    currentQuery = e.target.value;
+    applyFiltersAndRender();
+  });
+
+  document.getElementById("categoryChips").addEventListener("click", function (e) {
+    const chip = e.target.closest(".lf-chip");
+    if (!chip) return;
+    document.querySelectorAll("#categoryChips .lf-chip").forEach(function (c) { c.classList.remove("active"); });
+    chip.classList.add("active");
+    currentCategory = chip.dataset.cat;
+    applyFiltersAndRender();
+  });
+
+  document.getElementById("sortSelect").addEventListener("change", function (e) {
+    currentSort = e.target.value;
+    applyFiltersAndRender();
+  });
+
+  window.addEventListener("lf:route:home", function () {
+    if (allMods.length === 0) fetchPublishedMods();
+    else applyFiltersAndRender();
+  });
+
+  // Kick off first load if we land on home
+  document.addEventListener("DOMContentLoaded", function () {
+    if ((window.location.hash || "#/") === "#/") fetchPublishedMods();
+  });
+})();
+</script>
+<script>
+/* ============================================================
+   MOD DETAIL MODULE
+   ============================================================ */
+(function () {
+  "use strict";
+
+  let currentModId = null;
+  let currentModData = null;
+  let currentTab = "description";
+
+  function detailShell(mod) {
+    const icon = mod.iconURL
+      ? '<img src="' + window.LF.escapeHTML(mod.iconURL) + '" alt="">'
+      : '<div class="fallback-icon" style="font-size:44px;">📦</div>';
+
+    return (
+      '<div class="lf-detail-header">' +
+        '<div class="lf-detail-icon">' + icon + '</div>' +
+        '<div class="lf-detail-info">' +
+          '<h1>' + window.LF.escapeHTML(mod.name) + '</h1>' +
+          '<div class="lf-detail-meta-row">' +
+            '<span class="item">👤 ' + window.LF.escapeHTML(mod.ownerName || "Unknown") + '</span>' +
+            '<span class="item">⬇ ' + window.LF.fmtCount(mod.downloads) + ' downloads</span>' +
+            '<span class="item">❤ <span id="likeCount">' + window.LF.fmtCount(mod.likes) + '</span> likes</span>' +
+            '<span class="item">🕒 Updated ' + window.LF.timeAgo(mod.updatedAt || mod.createdAt) + '</span>' +
+          '</div>' +
+          '<div class="lf-detail-actions">' +
+            '<button class="lf-btn lf-btn-primary" id="downloadLatestBtn">⬇ Download Latest</button>' +
+            '<button class="lf-btn lf-btn-ghost" id="likeBtn">❤ Like</button>' +
+          '</div>' +
+        '</div>' +
+      '</div>' +
+      '<div class="lf-tabs">' +
+        '<button class="lf-tab active" data-tab="description">Description</button>' +
+        '<button class="lf-tab" data-tab="files">Files</button>' +
+        '<button class="lf-tab" data-tab="comments">Comments</button>' +
+      '</div>' +
+      '<div class="lf-detail-layout">' +
+        '<div id="tabContent"></div>' +
+        '<aside class="lf-side-panel">' +
+          '<h4>Details</h4>' +
+          '<div class="lf-side-stat-row"><span class="label">Category</span><span class="value">' + (mod.category || "other") + '</span></div>' +
+          '<div class="lf-side-stat-row"><span class="label">Downloads</span><span class="value">' + window.LF.fmtCount(mod.downloads) + '</span></div>' +
+          '<div class="lf-side-stat-row"><span class="label">Likes</span><span class="value">' + window.LF.fmtCount(mod.likes) + '</span></div>' +
+          '<div class="lf-side-stat-row"><span class="label">Created</span><span class="value">' + window.LF.timeAgo(mod.createdAt) + '</span></div>' +
+        '</aside>' +
+      '</div>'
+    );
+  }
+
+  function renderDescriptionTab(mod) {
+    let html = '<div class="lf-rich-body">' + (mod.description || '<p>No description provided yet.</p>') + '</div>';
+    if (mod.screenshots && mod.screenshots.length) {
+      html += '<div class="lf-screenshot-strip">' +
+        mod.screenshots.map(function (url) {
+          return '<img src="' + window.LF.escapeHTML(url) + '" alt="Screenshot" class="lightbox-trigger" data-full="' + window.LF.escapeHTML(url) + '">';
+        }).join("") +
+        '</div>';
+    }
+    document.getElementById("tabContent").innerHTML = html;
+
+    document.querySelectorAll(".lightbox-trigger").forEach(function (img) {
+      img.addEventListener("click", function () {
+        document.getElementById("lightboxImg").src = img.dataset.full;
+        document.getElementById("lightboxOverlay").classList.add("open");
+      });
+    });
+  }
+
+  function renderFilesTab(modId) {
+    document.getElementById("tabContent").innerHTML = '<div class="lf-loading-fill"><span class="lf-spinner" style="border-top-color:var(--lens-cyan); border-color:var(--border-soft);"></span> Loading versions…</div>';
+
+    window.LF.db.collection("mods").doc(modId).collection("files")
+      .orderBy("createdAt", "desc")
+      .get()
+      .then(function (snap) {
+        if (snap.empty) {
+          document.getElementById("tabContent").innerHTML = '<div class="lf-empty-state"><div class="ic">📁</div><h3>No files yet</h3></div>';
+          return;
+        }
+        let rows = "";
+        snap.docs.forEach(function (d, i) {
+          const f = d.data();
+          rows +=
+            '<tr>' +
+              '<td><span class="lf-version-badge' + (i === 0 ? " latest" : "") + '">' + window.LF.escapeHTML(f.version || "1.0") + (i === 0 ? " · Latest" : "") + '</span></td>' +
+              '<td>' + window.LF.escapeHTML(f.notes || "—") + '</td>' +
+              '<td>' + window.LF.timeAgo(f.createdAt) + '</td>' +
+              '<td>' + window.LF.fmtCount(f.downloads) + '</td>' +
+              '<td><button class="lf-btn lf-btn-sm lf-btn-ghost file-download-btn" data-file-id="' + d.id + '">⬇ Download</button></td>' +
+            '</tr>';
+        });
+        document.getElementById("tabContent").innerHTML =
+          '<table class="lf-files-table"><thead><tr><th>Version</th><th>Notes</th><th>Released</th><th>Downloads</th><th></th></tr></thead><tbody>' + rows + '</tbody></table>';
+
+        document.querySelectorAll(".file-download-btn").forEach(function (btn) {
+          btn.addEventListener("click", function () { downloadFile(modId, btn.dataset.fileId); });
+        });
+      })
+      .catch(function (err) {
+        console.error(err);
+        document.getElementById("tabContent").innerHTML = '<div class="lf-empty-state"><div class="ic">⚠️</div><h3>Couldn\'t load files</h3></div>';
+      });
+  }
+
+  function renderCommentsTab(modId) {
+    document.getElementById("tabContent").innerHTML = '<div class="lf-loading-fill"><span class="lf-spinner" style="border-top-color:var(--lens-cyan); border-color:var(--border-soft);"></span> Loading comments…</div>';
+
+    window.LF.db.collection("mods").doc(modId).collection("comments")
+      .orderBy("createdAt", "desc")
+      .limit(50)
+      .get()
+      .then(function (snap) {
+        let list = "";
+        snap.docs.forEach(function (d) {
+          const c = d.data();
+          const initial = (c.authorName || "?").charAt(0).toUpperCase();
+          list +=
+            '<div class="lf-comment">' +
+              '<div class="lf-comment-avatar">' + initial + '</div>' +
+              '<div class="lf-comment-body">' +
+                '<span class="lf-comment-author">' + window.LF.escapeHTML(c.authorName || "Anonymous") + '</span>' +
+                '<span class="lf-comment-time">' + window.LF.timeAgo(c.createdAt) + '</span>' +
+                '<div class="lf-comment-text">' + window.LF.escapeHTML(c.text || "") + '</div>' +
+              '</div>' +
+            '</div>';
+        });
+
+        const formHTML =
+          '<div class="lf-field" style="margin-top:6px;">' +
+            '<textarea class="lf-textarea" id="newCommentInput" placeholder="Share your thoughts on this mod…" rows="3"></textarea>' +
+            '<button class="lf-btn lf-btn-primary lf-btn-sm" id="submitCommentBtn" style="margin-top:8px;">Post Comment</button>' +
+          '</div>';
+
+        document.getElementById("tabContent").innerHTML = formHTML + (list || '<p style="color:var(--text-tertiary); font-size:13.5px; padding:14px 0;">No comments yet. Be the first!</p>');
+
+        document.getElementById("submitCommentBtn").addEventListener("click", function () {
+          if (!window.LF.requireAuth("Commenting")) return;
+          const input = document.getElementById("newCommentInput");
+          const text = input.value.trim();
+          if (!text) return;
+          this.disabled = true;
+          window.LF.db.collection("mods").doc(modId).collection("comments").add({
+            authorId: window.LF.currentUser.uid,
+            authorName: window.LF.currentProfile ? window.LF.currentProfile.displayName : "Builder",
+            text: text,
+            createdAt: firebase.firestore.FieldValue.serverTimestamp()
+          }).then(function () {
+            window.LF.toast("Comment posted.", "ok");
+            renderCommentsTab(modId);
+          }).catch(function (err) {
+            window.LF.toast("Couldn't post comment: " + err.message, "error");
+          });
+        });
+      })
+      .catch(function (err) {
+        console.error(err);
+        document.getElementById("tabContent").innerHTML = '<div class="lf-empty-state"><div class="ic">⚠️</div><h3>Couldn\'t load comments</h3></div>';
+      });
+  }
+
+  function switchTab(tab, mod, modId) {
+    currentTab = tab;
+    document.querySelectorAll(".lf-tab").forEach(function (t) { t.classList.toggle("active", t.dataset.tab === tab); });
+    if (tab === "description") renderDescriptionTab(mod);
+    else if (tab === "files") renderFilesTab(modId);
+    else if (tab === "comments") renderCommentsTab(modId);
+  }
+
+  // ------------------------------------------------------------
+  // .lens file download — reconstructs the packaged file from
+  // stored data and triggers a browser download.
+  // ------------------------------------------------------------
+  function downloadFile(modId, fileId) {
+    const modRef = window.LF.db.collection("mods").doc(modId);
+    const fileRef = modRef.collection("files").doc(fileId);
+
+    fileRef.get().then(function (doc) {
+      if (!doc.exists) { window.LF.toast("File not found.", "error"); return; }
+      const data = doc.data();
+      const lensText = data.lensContent || "// LegendsForce mod package\n// (content unavailable)";
+      const blob = new Blob([lensText], { type: "application/octet-stream" });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = (data.fileName || (currentModData ? currentModData.namespace : "mod")) + ".lens";
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+      URL.revokeObjectURL(url);
+
+      // increment counters (best-effort, non-blocking)
+      fileRef.update({ downloads: firebase.firestore.FieldValue.increment(1) }).catch(function(){});
+      modRef.update({ downloads: firebase.firestore.FieldValue.increment(1) }).catch(function(){});
+      window.LF.toast("Download started.", "ok");
+    }).catch(function (err) {
+      window.LF.toast("Download failed: " + err.message, "error");
+    });
+  }
+
+  function downloadLatest(modId) {
+    window.LF.db.collection("mods").doc(modId).collection("files")
+      .orderBy("createdAt", "desc").limit(1).get()
+      .then(function (snap) {
+        if (snap.empty) { window.LF.toast("No files published for this mod yet.", "warn"); return; }
+        downloadFile(modId, snap.docs[0].id);
+      });
+  }
+
+  function toggleLike(modId) {
+    if (!window.LF.requireAuth("Liking a mod")) return;
+    const uid = window.LF.currentUser.uid;
+    const likeRef = window.LF.db.collection("mods").doc(modId).collection("likes").doc(uid);
+    const modRef = window.LF.db.collection("mods").doc(modId);
+
+    likeRef.get().then(function (doc) {
+      if (doc.exists) {
+        return likeRef.delete().then(function () {
+          return modRef.update({ likes: firebase.firestore.FieldValue.increment(-1) });
+        }).then(function () {
+          document.getElementById("likeBtn").textContent = "❤ Like";
+          window.LF.toast("Removed like.", "ok");
+        });
+      } else {
+        return likeRef.set({ likedAt: firebase.firestore.FieldValue.serverTimestamp() }).then(function () {
+          return modRef.update({ likes: firebase.firestore.FieldValue.increment(1) });
+        }).then(function () {
+          document.getElementById("likeBtn").textContent = "❤ Liked";
+          window.LF.toast("Liked!", "ok");
+        });
+      }
+    }).catch(function (err) { window.LF.toast("Couldn't update like: " + err.message, "error"); });
+  }
+
+  function loadModDetail(modId) {
+    currentModId = modId;
+    document.getElementById("detailContainer").innerHTML = '<div class="lf-loading-fill" style="padding:100px 0;"><span class="lf-spinner" style="border-top-color:var(--lens-cyan); border-color:var(--border-soft);"></span> Loading mod…</div>';
+
+    window.LF.db.collection("mods").doc(modId).get().then(function (doc) {
+      if (!doc.exists) {
+        document.getElementById("detailContainer").innerHTML = '<div class="lf-empty-state" style="padding:100px 0;"><div class="ic">❓</div><h3>Mod not found</h3><p>It may have been removed or unpublished.</p></div>';
+        return;
+      }
+      const mod = Object.assign({ id: doc.id }, doc.data());
+      currentModData = mod;
+      document.getElementById("detailContainer").innerHTML = detailShell(mod);
+      switchTab("description", mod, modId);
+
+      document.querySelectorAll(".lf-tab").forEach(function (t) {
+        t.addEventListener("click", function () { switchTab(t.dataset.tab, mod, modId); });
+      });
+      document.getElementById("downloadLatestBtn").addEventListener("click", function () { downloadLatest(modId); });
+      document.getElementById("likeBtn").addEventListener("click", function () { toggleLike(modId); });
+
+      if (window.LF.currentUser) {
+        window.LF.db.collection("mods").doc(modId).collection("likes").doc(window.LF.currentUser.uid).get()
+          .then(function (d) { if (d.exists) document.getElementById("likeBtn").textContent = "❤ Liked"; });
+      }
+    }).catch(function (err) {
+      console.error(err);
+      document.getElementById("detailContainer").innerHTML = '<div class="lf-empty-state" style="padding:100px 0;"><div class="ic">⚠️</div><h3>Couldn\'t load mod</h3></div>';
+    });
+  }
+
+  window.addEventListener("lf:route:detail", function (e) { loadModDetail(e.detail.modId); });
+
+  document.getElementById("lightboxOverlay").addEventListener("click", function (e) {
+    if (e.target === this) this.classList.remove("open");
+  });
+})();
+</script>
+<script>
+/* ============================================================
+   MOD EDITOR MODULE (MCreator-style multistep)
+   Produces a .lens package:
+
+     game.lensmodpack{
+       namespace: "...",
+       id: "namespace:item_id",
+       displayName: "...",
+       type: "item" | "block" | "mob",
+       category: "...",
+       shortDescription: "...",
+       texture: { mode: "upload", data: "data:image/png;base64,..." }
+               | { mode: "override", target: "minecraft:xxx" }
+     }
+
+     // Config values outside the main block, as allowed by the brief:
+     @lensformat 1
+     @generator LegendsForce Web Editor
+   ============================================================ */
+(function () {
+  "use strict";
+
+  const overlay = document.getElementById("editorOverlay");
+  let step = 1;
+  const TOTAL_STEPS = 5;
+
+  let entry = {
+    modName: "",
+    namespace: "",
+    displayName: "",
+    shortDesc: "",
+    type: "item",
+    category: "items",
+    textureMode: "upload",
+    textureDataURL: null,
+    textureFileName: null,
+    overrideTarget: null,
+    draftId: null // Firestore mods/{id} once saved as draft
+  };
+
+  function resetEditor() {
+    step = 1;
+    entry = {
+      modName: "", namespace: "", displayName: "", shortDesc: "",
+      type: "item", category: "items",
+      textureMode: "upload", textureDataURL: null, textureFileName: null,
+      overrideTarget: null, draftId: null
+    };
+    document.getElementById("modName").value = "";
+    document.getElementById("modNamespace").value = "";
+    document.getElementById("entryDisplayName").value = "";
+    document.getElementById("entryShortDesc").value = "";
+    document.getElementById("entryCategory").value = "items";
+    document.querySelectorAll(".lf-type-card").forEach(function (c) { c.classList.toggle("selected", c.dataset.type === "item"); });
+    resetTextureUI();
+    goToStep(1);
+  }
+
+  function resetTextureUI() {
+    document.getElementById("dropzoneEmpty").style.display = "block";
+    document.getElementById("dropzoneFilled").style.display = "none";
+    document.getElementById("textureFileInput").value = "";
+    document.querySelectorAll(".lf-radio-card").forEach(function (c) { c.classList.toggle("checked", c.dataset.mode === "upload"); });
+    document.getElementById("uploadModePanel").style.display = "block";
+    document.getElementById("overrideModePanel").style.display = "none";
+    document.querySelectorAll(".lf-override-item").forEach(function (i) { i.classList.remove("selected"); });
+  }
+
+  window.LF.openEditor = function (existingModId) {
+    if (!window.LF.requireAuth("Creating a mod")) return;
+    resetEditor();
+    document.getElementById("editorModalTitle").textContent = "Create Mod Item";
+    overlay.classList.add("open");
+  };
+
+  function closeEditor() { overlay.classList.remove("open"); }
+  document.getElementById("editorCloseBtn").addEventListener("click", closeEditor);
+  overlay.addEventListener("click", function (e) { if (e.target === overlay) closeEditor(); });
+
+  document.getElementById("createModBtn").addEventListener("click", function () { window.LF.openEditor(); });
+  document.getElementById("myModsCreateBtn") && document.getElementById("myModsCreateBtn").addEventListener("click", function () { window.LF.openEditor(); });
+
+  // ------------------------------------------------------------
+  // STEP NAVIGATION
+  // ------------------------------------------------------------
+  function goToStep(n) {
+    step = n;
+    document.querySelectorAll(".lf-editor-step").forEach(function (s) {
+      const sn = parseInt(s.dataset.step, 10);
+      s.classList.toggle("active", sn === n);
+      s.classList.toggle("done", sn < n);
+    });
+    document.querySelectorAll(".lf-editor-panel").forEach(function (p) {
+      p.classList.toggle("active", parseInt(p.dataset.panel, 10) === n);
+    });
+    document.getElementById("editorBackBtn").style.display = n === 1 ? "none" : "inline-flex";
+    document.getElementById("editorNextBtn").textContent = n === TOTAL_STEPS ? "💾 Save Mod" : "Next →";
+
+    if (n === 2) updateIdPreview();
+    if (n === 3 && entry.textureMode === "override") renderOverrideList();
+    if (n === 4) updatePreviewStage();
+    if (n === 5) updateReview();
+  }
+
+  document.getElementById("editorBackBtn").addEventListener("click", function () {
+    if (step > 1) goToStep(step - 1);
+  });
+
+  document.getElementById("editorNextBtn").addEventListener("click", function () {
+    if (!validateStep(step)) return;
+    collectStepData(step);
+    if (step === TOTAL_STEPS) {
+      saveMod("draft", true);
+    } else {
+      goToStep(step + 1);
+    }
+  });
+
+  document.getElementById("editorSaveDraftBtn").addEventListener("click", function () {
+    if (!validateStep(1)) { goToStep(1); return; }
+    collectStepData(step);
+    saveMod("draft", false);
+  });
+
+  // Sidebar step click (only allow going back or to a completed step)
+  document.querySelectorAll(".lf-editor-step").forEach(function (s) {
+    s.addEventListener("click", function () {
+      const target = parseInt(s.dataset.step, 10);
+      if (target < step) { collectStepData(step); goToStep(target); }
+    });
+  });
+
+  function validateStep(n) {
+    if (n === 1) {
+      const modName = document.getElementById("modName").value.trim();
+      const namespace = document.getElementById("modNamespace").value.trim();
+      const displayName = document.getElementById("entryDisplayName").value.trim();
+      if (!modName) { window.LF.toast("Please enter a mod name.", "warn"); return false; }
+      if (!namespace) { window.LF.toast("Please enter a namespace (e.g. \"mod\" or your own prefix).", "warn"); return false; }
+      if (!displayName) { window.LF.toast("Please enter an item/block display name.", "warn"); return false; }
+      const sanitizedNs = window.LF.sanitizeIdPart(namespace);
+      if (!sanitizedNs) { window.LF.toast("Namespace must contain at least one letter or number.", "warn"); return false; }
+    }
+    if (n === 2) {
+      // system id must be non-empty after sanitization
+      const ns = window.LF.sanitizeIdPart(document.getElementById("modNamespace").value);
+      const id = window.LF.sanitizeIdPart(document.getElementById("entryDisplayName").value);
+      if (!ns || !id) { window.LF.toast("Couldn't generate a valid system ID — check your namespace and name.", "warn"); return false; }
+    }
+    if (n === 3) {
+      if (entry.textureMode === "upload" && !entry.textureDataURL) {
+        // allow proceeding without texture but warn once
+      }
+      if (entry.textureMode === "override" && !entry.overrideTarget) {
+        window.LF.toast("Please select a vanilla block/item to override.", "warn"); return false;
+      }
+    }
+    return true;
+  }
+
+  function collectStepData(n) {
+    if (n === 1) {
+      entry.modName = document.getElementById("modName").value.trim();
+      entry.namespace = window.LF.sanitizeIdPart(document.getElementById("modNamespace").value);
+      entry.displayName = document.getElementById("entryDisplayName").value.trim();
+      entry.shortDesc = document.getElementById("entryShortDesc").value.trim();
+    }
+    if (n === 2) {
+      entry.category = document.getElementById("entryCategory").value;
+    }
+  }
+
+  // ------------------------------------------------------------
+  // STEP 1→2: live namespace/id sanitization preview
+  // ------------------------------------------------------------
+  function updateIdPreview() {
+    const ns = window.LF.sanitizeIdPart(document.getElementById("modNamespace").value) || "namespace";
+    const id = window.LF.sanitizeIdPart(document.getElementById("entryDisplayName").value) || "item_id";
+    document.getElementById("systemIdPreview").innerHTML = ns + '<span class="sep">:</span>' + id;
+  }
+  document.getElementById("modNamespace").addEventListener("input", updateIdPreview);
+  document.getElementById("entryDisplayName").addEventListener("input", updateIdPreview);
+
+  // ------------------------------------------------------------
+  // STEP 2: type selection
+  // ------------------------------------------------------------
+  document.getElementById("typeGrid").addEventListener("click", function (e) {
+    const card = e.target.closest(".lf-type-card");
+    if (!card) return;
+    document.querySelectorAll(".lf-type-card").forEach(function (c) { c.classList.remove("selected"); });
+    card.classList.add("selected");
+    entry.type = card.dataset.type;
+    // sensible category default
+    const catMap = { item: "items", block: "blocks", mob: "mobs" };
+    entry.category = catMap[entry.type] || "other";
+    document.getElementById("entryCategory").value = entry.category;
+  });
+
+  // ------------------------------------------------------------
+  // STEP 3: texture upload / override
+  // ------------------------------------------------------------
+  document.querySelectorAll("#textureModeCards .lf-radio-card").forEach(function (card) {
+    card.addEventListener("click", function () {
+      document.querySelectorAll("#textureModeCards .lf-radio-card").forEach(function (c) { c.classList.remove("checked"); });
+      card.classList.add("checked");
+      const mode = card.dataset.mode;
+      entry.textureMode = mode;
+      document.getElementById("uploadModePanel").style.display = mode === "upload" ? "block" : "none";
+      document.getElementById("overrideModePanel").style.display = mode === "override" ? "block" : "none";
+      if (mode === "override" && !document.getElementById("overrideList").children.length) renderOverrideList();
+    });
+  });
+
+  const dropzone = document.getElementById("textureDropzone");
+  const fileInput = document.getElementById("textureFileInput");
+  dropzone.addEventListener("click", function () { fileInput.click(); });
+  dropzone.addEventListener("dragover", function (e) { e.preventDefault(); dropzone.classList.add("dragover"); });
+  dropzone.addEventListener("dragleave", function () { dropzone.classList.remove("dragover"); });
+  dropzone.addEventListener("drop", function (e) {
+    e.preventDefault(); dropzone.classList.remove("dragover");
+    if (e.dataTransfer.files && e.dataTransfer.files[0]) handleTextureFile(e.dataTransfer.files[0]);
+  });
+  fileInput.addEventListener("change", function () {
+    if (fileInput.files[0]) handleTextureFile(fileInput.files[0]);
+  });
+
+  function handleTextureFile(file) {
+    if (!file.type.match(/^image\/(png|jpeg|webp)$/)) {
+      window.LF.toast("Please upload a PNG, JPEG, or WEBP image.", "error"); return;
+    }
+    if (file.size > 1024 * 1024) {
+      window.LF.toast("Texture must be under 1MB.", "warn"); return;
+    }
+    const reader = new FileReader();
+    reader.onload = function (e) {
+      entry.textureDataURL = e.target.result;
+      entry.textureFileName = file.name;
+      document.getElementById("texturePreviewImg").src = e.target.result;
+      document.getElementById("textureFileName").textContent = file.name;
+      document.getElementById("dropzoneEmpty").style.display = "none";
+      document.getElementById("dropzoneFilled").style.display = "block";
+    };
+    reader.readAsDataURL(file);
+  }
+
+  document.getElementById("textureRemoveBtn").addEventListener("click", function (e) {
+    e.stopPropagation();
+    entry.textureDataURL = null;
+    entry.textureFileName = null;
+    document.getElementById("dropzoneEmpty").style.display = "block";
+    document.getElementById("dropzoneFilled").style.display = "none";
+    fileInput.value = "";
+  });
+
+  function renderOverrideList(filter) {
+    const list = window.LF.VANILLA_REGISTRY.filter(function (v) {
+      if (entry.type && v.type !== entry.type) return false;
+      if (filter) return v.name.toLowerCase().includes(filter.toLowerCase());
+      return true;
+    });
+    const container = document.getElementById("overrideList");
+    if (!list.length) {
+      container.innerHTML = '<div style="padding:20px; text-align:center; color:var(--text-tertiary); font-size:13px;">No matching vanilla entries.</div>';
+      return;
+    }
+    container.innerHTML = list.map(function (v) {
+      const checked = entry.overrideTarget === v.id ? "checked" : "";
+      const selectedClass = entry.overrideTarget === v.id ? "selected" : "";
+      return (
+        '<label class="lf-override-item ' + selectedClass + '" data-target="' + v.id + '">' +
+          '<span class="sw" style="background:' + v.color + '"></span>' +
+          '<span class="info"><div class="n">' + v.name + '</div><div class="id">' + v.id + '</div></span>' +
+          '<input type="radio" name="overrideTarget" value="' + v.id + '" ' + checked + '>' +
+        '</label>'
+      );
+    }).join("");
+
+    container.querySelectorAll(".lf-override-item").forEach(function (item) {
+      item.addEventListener("click", function () {
+        entry.overrideTarget = item.dataset.target;
+        container.querySelectorAll(".lf-override-item").forEach(function (i) { i.classList.remove("selected"); });
+        item.classList.add("selected");
+        item.querySelector("input").checked = true;
+      });
+    });
+  }
+  document.getElementById("overrideSearch").addEventListener("input", function (e) { renderOverrideList(e.target.value); });
+
+  // ------------------------------------------------------------
+  // STEP 4: preview stage
+  // ------------------------------------------------------------
+  function updatePreviewStage() {
+    const img = document.getElementById("heldItemPreview");
+    if (entry.textureMode === "upload" && entry.textureDataURL) {
+      img.src = entry.textureDataURL;
+      img.style.display = "block";
+    } else if (entry.textureMode === "override" && entry.overrideTarget) {
+      const v = window.LF.VANILLA_REGISTRY.find(function (x) { return x.id === entry.overrideTarget; });
+      // no real texture asset for vanilla items in this demo — render a colored swatch as SVG data URL
+      const color = v ? v.color : "#4facfe";
+      img.src = "data:image/svg+xml;utf8," + encodeURIComponent('<svg xmlns="http://www.w3.org/2000/svg" width="64" height="64"><rect width="64" height="64" fill="' + color + '"/></svg>');
+      img.style.display = "block";
+    } else {
+      img.style.display = "none";
+    }
+  }
+
+  // ------------------------------------------------------------
+  // STEP 5: review + .lens generation
+  // ------------------------------------------------------------
+  function buildLensObject() {
+    const textureBlock = entry.textureMode === "upload"
+      ? { mode: "upload", data: entry.textureDataURL || null, fileName: entry.textureFileName || null }
+      : { mode: "override", target: entry.overrideTarget };
+
+    return {
+      namespace: entry.namespace,
+      id: entry.namespace + ":" + window.LF.sanitizeIdPart(entry.displayName),
+      displayName: entry.displayName,
+      type: entry.type,
+      category: entry.category,
+      shortDescription: entry.shortDesc,
+      texture: textureBlock
+    };
+  }
+
+  function buildLensFileText() {
+    const obj = buildLensObject();
+    const body = JSON.stringify(obj, null, 2);
+    return (
+      "@lensformat 1\n" +
+      "@generator LegendsForce Web Editor\n\n" +
+      "game.lensmodpack{\n" +
+      indentBlock(body, 2) +
+      "\n}\n"
+    );
+  }
+
+  function indentBlock(str, spaces) {
+    const pad = " ".repeat(spaces);
+    return str.split("\n").map(function (l) { return pad + l; }).join("\n");
+  }
+
+  function updateReview() {
+    collectStepData(1); collectStepData(2);
+    const id = entry.namespace + ":" + window.LF.sanitizeIdPart(entry.displayName);
+    document.getElementById("reviewSummary").innerHTML =
+      '<div class="lf-summary-row"><span class="k">Mod Name</span><span class="v">' + window.LF.escapeHTML(entry.modName) + '</span></div>' +
+      '<div class="lf-summary-row"><span class="k">Item Name</span><span class="v">' + window.LF.escapeHTML(entry.displayName) + '</span></div>' +
+      '<div class="lf-summary-row"><span class="k">System ID</span><span class="v">' + window.LF.escapeHTML(id) + '</span></div>' +
+      '<div class="lf-summary-row"><span class="k">Type</span><span class="v">' + entry.type + '</span></div>' +
+      '<div class="lf-summary-row"><span class="k">Category</span><span class="v">' + entry.category + '</span></div>' +
+      '<div class="lf-summary-row"><span class="k">Texture</span><span class="v">' + (entry.textureMode === "upload" ? (entry.textureFileName || "Not uploaded") : "Override: " + (entry.overrideTarget || "—")) + '</span></div>';
+    document.getElementById("lensCodePreview").textContent = buildLensFileText();
+  }
+
+  // ------------------------------------------------------------
+  // SAVE: creates/updates a draft mod doc in Firestore
+  // ------------------------------------------------------------
+  function saveMod(status, thenOpenPublish) {
+    collectStepData(1); collectStepData(2);
+    if (!entry.modName || !entry.namespace || !entry.displayName) {
+      window.LF.toast("Please complete the Basics step before saving.", "warn");
+      goToStep(1);
+      return;
+    }
+
+    const uid = window.LF.currentUser.uid;
+    const displayName = window.LF.currentProfile ? window.LF.currentProfile.displayName : "Builder";
+    const lensText = buildLensFileText();
+
+    const btn = document.getElementById("editorNextBtn");
+    const saveDraftBtn = document.getElementById("editorSaveDraftBtn");
+    btn.disabled = true; saveDraftBtn.disabled = true;
+
+    const modsRef = window.LF.db.collection("mods");
+    const modDocRef = entry.draftId ? modsRef.doc(entry.draftId) : modsRef.doc();
+    entry.draftId = modDocRef.id;
+
+    const modPayload = {
+      ownerId: uid,
+      ownerName: displayName,
+      name: entry.modName,
+      namespace: entry.namespace,
+      category: entry.category,
+      shortDesc: entry.shortDesc,
+      status: "draft",
+      downloads: 0,
+      likes: 0,
+      updatedAt: firebase.firestore.FieldValue.serverTimestamp(),
+      createdAt: firebase.firestore.FieldValue.serverTimestamp()
+    };
+
+    modDocRef.set(modPayload, { merge: true })
+      .then(function () {
+        return modDocRef.collection("files").add({
+          version: "1.0",
+          notes: "Initial draft save.",
+          lensContent: lensText,
+          fileName: entry.namespace + "_" + window.LF.sanitizeIdPart(entry.displayName),
+          downloads: 0,
+          createdAt: firebase.firestore.FieldValue.serverTimestamp()
+        });
+      })
+      .then(function () {
+        window.LF.toast("Mod saved to My Mods as a draft.", "ok");
+        closeEditor();
+        if (thenOpenPublish && window.LF.openPublishModal) {
+          window.LF.openPublishModal(entry.draftId, entry.modName);
+        } else {
+          window.LF.navigate("/my-mods");
+        }
+      })
+      .catch(function (err) {
+        console.error(err);
+        window.LF.toast("Couldn't save mod: " + err.message, "error");
+      })
+      .finally(function () {
+        btn.disabled = false; saveDraftBtn.disabled = false;
+      });
+  }
+
+  window.LF.buildLensFileText = buildLensFileText;
+})();
+</script>
+<script>
+/* ============================================================
+   MY MODS MODULE
+   ============================================================ */
+(function () {
+  "use strict";
+
+  let myModsCache = [];
+  let myModsFilter = "all";
+
+  function rowHTML(mod) {
+    const thumb = mod.iconURL ? '<img src="' + window.LF.escapeHTML(mod.iconURL) + '" alt="">' : '📦';
+    const statusPill = '<span class="lf-status-pill ' + mod.status + '">' + mod.status + '</span>';
+    return (
+      '<div class="lf-mymods-row" data-mod-id="' + mod.id + '">' +
+        '<div class="thumb">' + thumb + '</div>' +
+        '<div class="info">' +
+          '<div class="t">' + window.LF.escapeHTML(mod.name) + ' ' + statusPill + '</div>' +
+          '<div class="m">' + (mod.category || "other") + ' · Updated ' + window.LF.timeAgo(mod.updatedAt || mod.createdAt) + ' · ⬇ ' + window.LF.fmtCount(mod.downloads) + '</div>' +
+        '</div>' +
+        '<div class="actions">' +
+          (mod.status === "published" ? '<a href="#/mod/' + mod.id + '" class="lf-btn lf-btn-sm lf-btn-ghost">View</a>' : '') +
+          (mod.status === "draft" ? '<button class="lf-btn lf-btn-sm lf-btn-primary publish-mod-btn" data-mod-id="' + mod.id + '" data-mod-name="' + window.LF.escapeHTML(mod.name) + '">🚀 Publish</button>' : '') +
+          '<button class="lf-btn lf-btn-sm lf-btn-danger delete-mod-btn" data-mod-id="' + mod.id + '">🗑</button>' +
+        '</div>' +
+      '</div>'
+    );
+  }
+
+  function renderMyMods() {
+    const list = myModsFilter === "all" ? myModsCache : myModsCache.filter(function (m) { return m.status === myModsFilter; });
+    const container = document.getElementById("myModsList");
+    if (!list.length) {
+      container.innerHTML = '<div class="lf-empty-state" style="padding:60px 0;"><div class="ic">📦</div><h3>No mods here yet</h3><p>Create your first mod to get started.</p></div>';
+      return;
+    }
+    container.innerHTML = list.map(rowHTML).join("");
+
+    container.querySelectorAll(".publish-mod-btn").forEach(function (btn) {
+      btn.addEventListener("click", function () { window.LF.openPublishModal(btn.dataset.modId, btn.dataset.modName); });
+    });
+    container.querySelectorAll(".delete-mod-btn").forEach(function (btn) {
+      btn.addEventListener("click", function () {
+        if (!confirm("Delete this mod permanently? This cannot be undone.")) return;
+        window.LF.db.collection("mods").doc(btn.dataset.modId).delete()
+          .then(function () { window.LF.toast("Mod deleted.", "ok"); fetchMyMods(); })
+          .catch(function (err) { window.LF.toast("Couldn't delete: " + err.message, "error"); });
+      });
+    });
+  }
+
+  function fetchMyMods() {
+    if (!window.LF.currentUser) return;
+    document.getElementById("myModsList").innerHTML = '<div class="lf-loading-fill"><span class="lf-spinner" style="border-top-color:var(--lens-cyan); border-color:var(--border-soft);"></span> Loading your mods…</div>';
+
+    window.LF.db.collection("mods")
+      .where("ownerId", "==", window.LF.currentUser.uid)
+      .orderBy("updatedAt", "desc")
+      .get()
+      .then(function (snap) {
+        myModsCache = snap.docs.map(function (d) { return Object.assign({ id: d.id }, d.data()); });
+        renderMyMods();
+      })
+      .catch(function (err) {
+        console.error(err);
+        document.getElementById("myModsList").innerHTML = '<div class="lf-empty-state"><div class="ic">⚠️</div><h3>Couldn\'t load your mods</h3></div>';
+      });
+  }
+
+  document.querySelectorAll(".lf-mymods-tab").forEach(function (tab) {
+    tab.addEventListener("click", function () {
+      document.querySelectorAll(".lf-mymods-tab").forEach(function (t) { t.classList.remove("active"); });
+      tab.classList.add("active");
+      myModsFilter = tab.dataset.status;
+      renderMyMods();
+    });
+  });
+
+  window.addEventListener("lf:route:mymods", fetchMyMods);
+  document.addEventListener("lf:mods:refresh", fetchMyMods);
+})();
+</script>
+
+<script>
+/* ============================================================
+   PUBLISH MODULE
+   ============================================================ */
+(function () {
+  "use strict";
+
+  const overlay = document.getElementById("publishOverlay");
+  let publishModId = null;
+  let iconDataURL = null;
+  let screenshots = []; // array of dataURLs
+
+  window.LF.openPublishModal = function (modId, modName) {
+    publishModId = modId;
+    iconDataURL = null;
+    screenshots = [];
+    document.getElementById("descEditor").innerHTML = "";
+    document.getElementById("versionNotes").value = "";
+    document.getElementById("publishConfirmCheck").checked = false;
+    document.getElementById("iconDropzoneEmpty").style.display = "block";
+    document.getElementById("iconDropzoneFilled").style.display = "none";
+    document.getElementById("screenshotsPreview").innerHTML = "";
+    overlay.classList.add("open");
+  };
+
+  document.getElementById("publishCloseBtn").addEventListener("click", closePublish);
+  document.getElementById("publishCancelBtn").addEventListener("click", closePublish);
+  overlay.addEventListener("click", function (e) { if (e.target === overlay) closePublish(); });
+  function closePublish() { overlay.classList.remove("open"); }
+
+  // ---- rich text toolbar ----
+  document.getElementById("descToolbar").addEventListener("click", function (e) {
+    const btn = e.target.closest("[data-cmd]");
+    if (!btn) return;
+    document.execCommand(btn.dataset.cmd, false, btn.dataset.arg || null);
+    document.getElementById("descEditor").focus();
+  });
+
+  document.getElementById("descImgBtn").addEventListener("click", function () {
+    document.getElementById("descImgInput").click();
+  });
+  document.getElementById("descImgInput").addEventListener("change", function (e) {
+    const file = e.target.files[0];
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onload = function (ev) {
+      document.execCommand("insertImage", false, ev.target.result);
+    };
+    reader.readAsDataURL(file);
+  });
+
+  // ---- icon upload ----
+  const iconDropzone = document.getElementById("iconDropzone");
+  iconDropzone.addEventListener("click", function () { document.getElementById("iconFileInput").click(); });
+  document.getElementById("iconFileInput").addEventListener("change", function (e) {
+    const file = e.target.files[0];
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onload = function (ev) {
+      iconDataURL = ev.target.result;
+      document.getElementById("iconPreviewImg").src = ev.target.result;
+      document.getElementById("iconDropzoneEmpty").style.display = "none";
+      document.getElementById("iconDropzoneFilled").style.display = "block";
+    };
+    reader.readAsDataURL(file);
+  });
+
+  // ---- screenshots upload ----
+  const shotsDropzone = document.getElementById("screenshotsDropzone");
+  shotsDropzone.addEventListener("click", function () { document.getElementById("screenshotsInput").click(); });
+  document.getElementById("screenshotsInput").addEventListener("change", function (e) {
+    Array.from(e.target.files).forEach(function (file) {
+      const reader = new FileReader();
+      reader.onload = function (ev) {
+        screenshots.push(ev.target.result);
+        renderScreenshotPreview();
+      };
+      reader.readAsDataURL(file);
+    });
+  });
+  function renderScreenshotPreview() {
+    document.getElementById("screenshotsPreview").innerHTML = screenshots.map(function (src, i) {
+      return '<img src="' + src + '" alt="Screenshot ' + (i + 1) + '">';
+    }).join("");
+  }
+
+  // ---- submit ----
+  document.getElementById("publishSubmitBtn").addEventListener("click", function () {
+    if (!publishModId) return;
+    if (!document.getElementById("publishConfirmCheck").checked) {
+      window.LF.toast("Please confirm the community guidelines checkbox.", "warn");
+      return;
+    }
+
+    const descHTML = document.getElementById("descEditor").innerHTML.trim();
+    const notes = document.getElementById("versionNotes").value.trim();
+    const btn = this;
+    btn.disabled = true;
+    btn.innerHTML = '<span class="lf-spinner"></span> Publishing…';
+
+    const modRef = window.LF.db.collection("mods").doc(publishModId);
+
+    modRef.update({
+      status: "published",
+      description: descHTML,
+      iconURL: iconDataURL || firebase.firestore.FieldValue.delete(),
+      screenshots: screenshots,
+      updatedAt: firebase.firestore.FieldValue.serverTimestamp()
+    }).then(function () {
+      // record a version note as a lightweight follow-up file entry if notes were given
+      if (notes) {
+        return modRef.collection("files").orderBy("createdAt", "desc").limit(1).get().then(function (snap) {
+          if (!snap.empty) {
+            return snap.docs[0].ref.update({ notes: notes });
+          }
+        });
+      }
+    }).then(function () {
+      window.LF.toast("Mod published! 🎉", "ok");
+      closePublish();
+      document.dispatchEvent(new CustomEvent("lf:mods:refresh"));
+      window.LF.navigate("/mod/" + publishModId);
+    }).catch(function (err) {
+      window.LF.toast("Couldn't publish: " + err.message, "error");
+    }).finally(function () {
+      btn.disabled = false;
+      btn.innerHTML = "🚀 Publish Mod";
+    });
+  });
+})();
+</script>
+</html>
