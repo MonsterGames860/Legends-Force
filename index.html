@@ -194,6 +194,7 @@ a:focus-visible, button:focus-visible, input:focus-visible, textarea:focus-visib
   white-space:nowrap;
 }
 .lf-btn:active{ transform: translateY(1px) scale(0.98); }
+.lf-btn-emoji{ padding:10px 12px; min-width:44px; }
 .lf-btn-primary{
   background: linear-gradient(120deg, var(--lens-cyan), var(--lens-blue));
   color:#001521;
@@ -593,12 +594,21 @@ a:focus-visible, button:focus-visible, input:focus-visible, textarea:focus-visib
 .lf-tab{
   padding:11px 18px;
   font-size:13.5px; font-weight:700;
-  color: var(--text-tertiary);
+  color: #fff;
   border-bottom:2px solid transparent;
   white-space:nowrap;
+  background: none;
+  border: none;
+  cursor: pointer;
+  transition: all .15s ease;
 }
-.lf-tab.active{ color: var(--lens-cyan); border-bottom-color: var(--lens-cyan); }
-.lf-tab:hover{ color: var(--text-primary); }
+.lf-tab.active{ 
+  color: #fff;
+  background: var(--lens-cyan);
+  border-bottom-color: var(--lens-cyan);
+  border-radius: var(--radius-md);
+}
+.lf-tab:hover{ background: rgba(0,242,254,0.15); }
 
 .lf-detail-layout{ display:grid; grid-template-columns: 1fr 300px; gap:28px; padding-bottom:60px; }
 @media (max-width:880px){ .lf-detail-layout{ grid-template-columns:1fr; } }
@@ -2315,7 +2325,7 @@ a:focus-visible, button:focus-visible, input:focus-visible, textarea:focus-visib
             '<span class="item">🕒 Updated ' + window.LF.timeAgo(mod.updatedAt || mod.createdAt) + '</span>' +
           '</div>' +
           '<div class="lf-detail-actions">' +
-            '<button class="lf-btn lf-btn-primary" id="downloadLatestBtn">⬇ Download Latest</button>' +
+            '<button class="lf-btn lf-btn-primary lf-btn-emoji" id="downloadLatestBtn" title="Download Latest">⬇️</button>' +
             '<button class="lf-btn lf-btn-ghost" id="likeBtn">❤ Like</button>' +
           '</div>' +
         '</div>' +
@@ -3464,9 +3474,31 @@ a:focus-visible, button:focus-visible, input:focus-visible, textarea:focus-visib
     container.querySelectorAll(".delete-mod-btn").forEach(function (btn) {
       btn.addEventListener("click", function () {
         if (!confirm("Delete this mod permanently? This cannot be undone.")) return;
-        window.LF.db.collection("mods").doc(btn.dataset.modId).delete()
-          .then(function () { window.LF.toast("Mod deleted.", "ok"); fetchMyMods(); })
-          .catch(function (err) { window.LF.toast("Couldn't delete: " + err.message, "error"); });
+        const modId = btn.dataset.modId;
+        
+        // First, get the mod to find its slug
+        window.LF.db.collection("mods").doc(modId).get().then(function (doc) {
+          if (!doc.exists) {
+            window.LF.toast("Mod not found.", "error");
+            return;
+          }
+          
+          const modSlug = doc.data().slug;
+          
+          // Delete both the mod document and the slug reservation
+          const batch = window.LF.db.batch();
+          batch.delete(window.LF.db.collection("mods").doc(modId));
+          if (modSlug) {
+            batch.delete(window.LF.db.collection("modSlugs").doc(modSlug));
+          }
+          
+          return batch.commit();
+        }).then(function () { 
+          window.LF.toast("Mod deleted.", "ok"); 
+          fetchMyMods(); 
+        }).catch(function (err) { 
+          window.LF.toast("Couldn't delete: " + err.message, "error"); 
+        });
       });
     });
   }
