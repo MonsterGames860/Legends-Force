@@ -3472,14 +3472,19 @@ a:focus-visible, button:focus-visible, input:focus-visible, textarea:focus-visib
 
     window.LF.db.collection("mods")
       .where("ownerId", "==", window.LF.currentUser.uid)
-      .orderBy("updatedAt", "desc")
       .get()
       .then(function (snap) {
         myModsCache = snap.docs.map(function (d) { return Object.assign({ id: d.id }, d.data()); });
+        myModsCache.sort(function (a, b) {
+          const at = a.updatedAt && a.updatedAt.toMillis ? a.updatedAt.toMillis() : 0;
+          const bt = b.updatedAt && b.updatedAt.toMillis ? b.updatedAt.toMillis() : 0;
+          return bt - at;
+        });
         renderMyMods();
       })
       .catch(function (err) {
         console.error(err);
+        window.LF.toast("Couldn't load mods: " + err.message, "error");
         document.getElementById("myModsList").innerHTML = '<div class="lf-empty-state"><div class="ic">⚠️</div><h3>Couldn\'t load your mods</h3></div>';
       });
   }
