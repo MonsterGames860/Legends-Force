@@ -597,7 +597,7 @@ a:focus-visible, button:focus-visible, input:focus-visible, textarea:focus-visib
   border-bottom:2px solid transparent;
   white-space:nowrap;
 }
-.lf-tab.active{ color:#fff; border-bottom-color: var(--lens-cyan); }
+.lf-tab.active{ color: var(--lens-cyan); border-bottom-color: var(--lens-cyan); }
 .lf-tab:hover{ color: var(--text-primary); }
 
 .lf-detail-layout{ display:grid; grid-template-columns: 1fr 300px; gap:28px; padding-bottom:60px; }
@@ -2372,7 +2372,7 @@ a:focus-visible, button:focus-visible, input:focus-visible, textarea:focus-visib
               '<td>' + window.LF.escapeHTML(f.notes || "—") + '</td>' +
               '<td>' + window.LF.timeAgo(f.createdAt) + '</td>' +
               '<td>' + window.LF.fmtCount(f.downloads) + '</td>' +
-              '<td><button class="lf-btn lf-btn-sm lf-btn-ghost file-download-btn" data-file-id="' + d.id + '">⬇ Download</button></td>' +
+              '<td><button class="lf-btn lf-btn-sm lf-btn-primary file-download-btn" data-file-id="' + d.id + '">⬇ Download</button></td>' +
             '</tr>';
         });
         document.getElementById("tabContent").innerHTML =
@@ -3578,6 +3578,7 @@ a:focus-visible, button:focus-visible, input:focus-visible, textarea:focus-visib
           });
         }).then(function () {
           window.LF.toast("Mod uploaded to My Mods as a draft.", "ok");
+          window.LF.navigate("/mymods");
           fetchMyMods();
         }).catch(function (err) {
           console.error(err);
