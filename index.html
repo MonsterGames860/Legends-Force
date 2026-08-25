@@ -924,6 +924,31 @@ a:focus-visible, button:focus-visible, input:focus-visible, textarea:focus-visib
 .lf-dropzone .ic{ font-size:30px; opacity:0.6; margin-bottom:8px; }
 .lf-dropzone .txt{ font-size:13px; color: var(--text-secondary); }
 .lf-dropzone .sub{ font-size:11.5px; color: var(--text-tertiary); margin-top:4px; }
+
+/* 6 Face Texture Dropzones */
+.lf-dropzone[id*="fTexture_"] {
+  padding: 16px;
+  min-height: 140px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+}
+.lf-dropzone[id*="fTexture_"] .ic {
+  font-size: 24px;
+  margin-bottom: 6px;
+}
+.lf-dropzone[id*="fTexture_"] .txt {
+  font-size: 12px;
+  font-weight: 500;
+}
+.face-dropzone-empty, .face-dropzone-filled {
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}
+
 .lf-texture-preview{
   width:64px; height:64px; margin:0 auto 10px;
   border-radius: var(--radius-sm); overflow:hidden;
@@ -943,6 +968,67 @@ a:focus-visible, button:focus-visible, input:focus-visible, textarea:focus-visib
 .lf-override-item:hover{ background: rgba(255,255,255,0.03); }
 .lf-override-item.selected{ background: rgba(0,242,254,0.07); }
 .lf-override-item .sw{ width:26px; height:26px; border-radius:5px; flex-shrink:0; border:1px solid var(--border-soft); }
+
+/* TEXTURE PACK STYLES */
+.tp-categories-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+  gap: 16px;
+  margin-top: 12px;
+}
+
+.tp-category {
+  background: rgba(0,242,254,0.04);
+  border: 1px solid var(--border-soft);
+  border-radius: var(--radius-md);
+  padding: 12px;
+}
+
+.tp-category h5 {
+  font-size: 12px;
+  font-weight: 600;
+  margin: 0 0 8px 0;
+  color: var(--text-secondary);
+}
+
+.tp-dropzone {
+  border: 1.5px dashed var(--border-glow);
+  border-radius: var(--radius-md);
+  padding: 12px;
+  text-align: center;
+  cursor: pointer;
+  transition: all 0.15s ease;
+  background: var(--bg-deep);
+  min-height: 80px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-direction: column;
+  margin-bottom: 8px;
+}
+
+.tp-dropzone:hover, .tp-dropzone.dragover {
+  border-color: var(--lens-cyan);
+  background: rgba(0,242,254,0.08);
+}
+
+.tp-empty {
+  font-size: 12px;
+  color: var(--text-secondary);
+}
+
+.tp-preview {
+  width: 100%;
+  height: auto;
+}
+
+.tp-preview img {
+  width: 100%;
+  max-height: 80px;
+  border-radius: var(--radius-sm);
+  image-rendering: pixelated;
+  object-fit: cover;
+}
 .lf-override-item .info .n{ font-size:13px; font-weight:600; color:#fff; }
 .lf-override-item .info .id{ font-size:11px; font-family:var(--font-mono); color: var(--text-tertiary); }
 .lf-override-item input[type=radio]{ margin-left:auto; accent-color: var(--lens-cyan); }
@@ -1282,6 +1368,7 @@ a:focus-visible, button:focus-visible, input:focus-visible, textarea:focus-visib
             <button data-type="item"><span class="ic">⚔️</span> Item</button>
             <button data-type="entity"><span class="ic">👾</span> Entity</button>
             <button data-type="script"><span class="ic">📜</span> Event Script</button>
+            <button data-type="texture_pack"><span class="ic">🎨</span> Texture Pack</button>
           </div>
         </div>
       </div>
@@ -1361,20 +1448,87 @@ a:focus-visible, button:focus-visible, input:focus-visible, textarea:focus-visib
 
           <div class="lf-ws-form-col">
             <div class="lf-field">
-              <label>Icon / Texture</label>
-              <div class="lf-dropzone" id="fTextureDropzone">
-                <input type="file" id="fTextureFileInput" accept="image/png,image/jpeg,image/webp" style="display:none;">
-                <div id="fDropzoneEmpty">
-                  <div class="ic">📤</div>
-                  <div class="txt">Click or drag a texture image here</div>
-                  <div class="sub">PNG recommended · 16×16 or 32×32 · max 1MB</div>
+              <label>Block Textures (6 Faces)</label>
+              <div style="display:grid; grid-template-columns:1fr 1fr; gap:12px; margin-bottom:12px;">
+                <!-- TOP -->
+                <div class="lf-dropzone" id="fTexture_top" data-face="top">
+                  <input type="file" class="face-texture-input" accept="image/png,image/jpeg,image/webp" data-face="top" style="display:none;">
+                  <div class="face-dropzone-empty">
+                    <div class="ic">📤</div>
+                    <div class="txt">Top</div>
+                  </div>
+                  <div class="face-dropzone-filled" style="display:none;">
+                    <div class="lf-texture-preview"><img class="face-texture-preview" src="" alt=""></div>
+                    <button type="button" class="lf-btn lf-btn-ghost lf-btn-sm face-remove-btn" data-face="top" style="margin-top:6px; width:100%;">Remove</button>
+                  </div>
                 </div>
-                <div id="fDropzoneFilled" style="display:none;">
-                  <div class="lf-texture-preview"><img id="fTexturePreviewImg" src="" alt=""></div>
-                  <div class="txt" id="fTextureFileName">texture.png</div>
-                  <button type="button" class="lf-btn lf-btn-ghost lf-btn-sm" id="fTextureRemoveBtn" style="margin-top:10px;">Remove</button>
+
+                <!-- BOTTOM -->
+                <div class="lf-dropzone" id="fTexture_bottom" data-face="bottom">
+                  <input type="file" class="face-texture-input" accept="image/png,image/jpeg,image/webp" data-face="bottom" style="display:none;">
+                  <div class="face-dropzone-empty">
+                    <div class="ic">📤</div>
+                    <div class="txt">Bottom</div>
+                  </div>
+                  <div class="face-dropzone-filled" style="display:none;">
+                    <div class="lf-texture-preview"><img class="face-texture-preview" src="" alt=""></div>
+                    <button type="button" class="lf-btn lf-btn-ghost lf-btn-sm face-remove-btn" data-face="bottom" style="margin-top:6px; width:100%;">Remove</button>
+                  </div>
+                </div>
+
+                <!-- SIDE 1 -->
+                <div class="lf-dropzone" id="fTexture_side1" data-face="side1">
+                  <input type="file" class="face-texture-input" accept="image/png,image/jpeg,image/webp" data-face="side1" style="display:none;">
+                  <div class="face-dropzone-empty">
+                    <div class="ic">📤</div>
+                    <div class="txt">Side 1</div>
+                  </div>
+                  <div class="face-dropzone-filled" style="display:none;">
+                    <div class="lf-texture-preview"><img class="face-texture-preview" src="" alt=""></div>
+                    <button type="button" class="lf-btn lf-btn-ghost lf-btn-sm face-remove-btn" data-face="side1" style="margin-top:6px; width:100%;">Remove</button>
+                  </div>
+                </div>
+
+                <!-- SIDE 2 -->
+                <div class="lf-dropzone" id="fTexture_side2" data-face="side2">
+                  <input type="file" class="face-texture-input" accept="image/png,image/jpeg,image/webp" data-face="side2" style="display:none;">
+                  <div class="face-dropzone-empty">
+                    <div class="ic">📤</div>
+                    <div class="txt">Side 2</div>
+                  </div>
+                  <div class="face-dropzone-filled" style="display:none;">
+                    <div class="lf-texture-preview"><img class="face-texture-preview" src="" alt=""></div>
+                    <button type="button" class="lf-btn lf-btn-ghost lf-btn-sm face-remove-btn" data-face="side2" style="margin-top:6px; width:100%;">Remove</button>
+                  </div>
+                </div>
+
+                <!-- SIDE 3 -->
+                <div class="lf-dropzone" id="fTexture_side3" data-face="side3">
+                  <input type="file" class="face-texture-input" accept="image/png,image/jpeg,image/webp" data-face="side3" style="display:none;">
+                  <div class="face-dropzone-empty">
+                    <div class="ic">📤</div>
+                    <div class="txt">Side 3</div>
+                  </div>
+                  <div class="face-dropzone-filled" style="display:none;">
+                    <div class="lf-texture-preview"><img class="face-texture-preview" src="" alt=""></div>
+                    <button type="button" class="lf-btn lf-btn-ghost lf-btn-sm face-remove-btn" data-face="side3" style="margin-top:6px; width:100%;">Remove</button>
+                  </div>
+                </div>
+
+                <!-- SIDE 4 -->
+                <div class="lf-dropzone" id="fTexture_side4" data-face="side4">
+                  <input type="file" class="face-texture-input" accept="image/png,image/jpeg,image/webp" data-face="side4" style="display:none;">
+                  <div class="face-dropzone-empty">
+                    <div class="ic">📤</div>
+                    <div class="txt">Side 4</div>
+                  </div>
+                  <div class="face-dropzone-filled" style="display:none;">
+                    <div class="lf-texture-preview"><img class="face-texture-preview" src="" alt=""></div>
+                    <button type="button" class="lf-btn lf-btn-ghost lf-btn-sm face-remove-btn" data-face="side4" style="margin-top:6px; width:100%;">Remove</button>
+                  </div>
                 </div>
               </div>
+              <div class="hint">PNG recommended · 16×16 or 32×32 · max 1MB per face</div>
             </div>
 
             <div class="lf-field">
@@ -1501,7 +1655,175 @@ a:focus-visible, button:focus-visible, input:focus-visible, textarea:focus-visib
         <div class="hint" style="margin-top:8px;">Runs sandboxed inside the game. Use the <code>Legends</code> API object (e.g. <code>Legends.player</code>, <code>Legends.world</code>) to interact with the game — see in-game Script Docs for reference.</div>
       </div>
 
-      <!-- Shared entry footer -->
+      <!-- TEXTURE PACK FORM -->
+      <div class="lf-ws-editform" id="wsFormTexturePack" style="display:none; overflow-y:auto;">
+        <div class="lf-ws-form-grid">
+          <div class="lf-ws-form-col">
+            <div class="lf-field">
+              <label>Pack Name</label>
+              <input class="lf-input" id="tpEntryName" type="text" placeholder="e.g. Neon Pack">
+            </div>
+            <div class="lf-field">
+              <label>System ID</label>
+              <div class="lf-id-preview">
+                <span class="label">texturepack:</span>
+                <span class="code" id="tpIdPreview">namespace:pack_id</span>
+              </div>
+            </div>
+            <div class="lf-field">
+              <label>Description</label>
+              <textarea class="lf-textarea" id="tpEntryDesc" placeholder="Describe your texture pack..." rows="3"></textarea>
+            </div>
+            <div class="lf-field">
+              <label>Version</label>
+              <input class="lf-input" id="tpVersion" type="text" placeholder="1.0.0" value="1.0.0">
+            </div>
+          </div>
+        </div>
+
+        <div style="margin-top:20px; border-top:1px solid var(--border-soft); padding-top:20px;">
+          <h4 style="margin:0 0 12px 0; font-size:14px; font-weight:600;">Texture Categories</h4>
+          
+          <div class="tp-categories-grid">
+            <!-- SKY -->
+            <div class="tp-category">
+              <h5>🌤️ Sky & Clouds</h5>
+              <div class="tp-dropzone" data-category="sky">
+                <input type="file" class="tp-texture-input" accept="image/png,image/jpeg,image/webp" data-category="sky" style="display:none;">
+                <div class="tp-empty">📤 Click to upload</div>
+                <div class="tp-preview" style="display:none;"><img src="" alt=""></div>
+              </div>
+            </div>
+
+            <!-- SUN & MOON -->
+            <div class="tp-category">
+              <h5>☀️ Sun & Moon</h5>
+              <div class="tp-dropzone" data-category="sun">
+                <input type="file" class="tp-texture-input" accept="image/png,image/jpeg,image/webp" data-category="sun" style="display:none;">
+                <div class="tp-empty">📤 Sun</div>
+                <div class="tp-preview" style="display:none;"><img src="" alt=""></div>
+              </div>
+              <div class="tp-dropzone" data-category="moon">
+                <input type="file" class="tp-texture-input" accept="image/png,image/jpeg,image/webp" data-category="moon" style="display:none;">
+                <div class="tp-empty">📤 Moon</div>
+                <div class="tp-preview" style="display:none;"><img src="" alt=""></div>
+              </div>
+            </div>
+
+            <!-- UI/HUD -->
+            <div class="tp-category">
+              <h5>🎮 UI/HUD</h5>
+              <div class="tp-dropzone" data-category="ui_inventory">
+                <input type="file" class="tp-texture-input" accept="image/png,image/jpeg,image/webp" data-category="ui_inventory" style="display:none;">
+                <div class="tp-empty">📤 Inventory</div>
+                <div class="tp-preview" style="display:none;"><img src="" alt=""></div>
+              </div>
+              <div class="tp-dropzone" data-category="ui_hotbar">
+                <input type="file" class="tp-texture-input" accept="image/png,image/jpeg,image/webp" data-category="ui_hotbar" style="display:none;">
+                <div class="tp-empty">📤 Hotbar</div>
+                <div class="tp-preview" style="display:none;"><img src="" alt=""></div>
+              </div>
+            </div>
+
+            <!-- TERRAIN -->
+            <div class="tp-category">
+              <h5>🌍 Terrain</h5>
+              <div class="tp-dropzone" data-category="terrain_grass">
+                <input type="file" class="tp-texture-input" accept="image/png,image/jpeg,image/webp" data-category="terrain_grass" style="display:none;">
+                <div class="tp-empty">📤 Grass</div>
+                <div class="tp-preview" style="display:none;"><img src="" alt=""></div>
+              </div>
+              <div class="tp-dropzone" data-category="terrain_dirt">
+                <input type="file" class="tp-texture-input" accept="image/png,image/jpeg,image/webp" data-category="terrain_dirt" style="display:none;">
+                <div class="tp-empty">📤 Dirt</div>
+                <div class="tp-preview" style="display:none;"><img src="" alt=""></div>
+              </div>
+              <div class="tp-dropzone" data-category="terrain_stone">
+                <input type="file" class="tp-texture-input" accept="image/png,image/jpeg,image/webp" data-category="terrain_stone" style="display:none;">
+                <div class="tp-empty">📤 Stone</div>
+                <div class="tp-preview" style="display:none;"><img src="" alt=""></div>
+              </div>
+            </div>
+
+            <!-- BLOCKS -->
+            <div class="tp-category">
+              <h5>🧱 Blocks</h5>
+              <div class="tp-dropzone" data-category="block_wood">
+                <input type="file" class="tp-texture-input" accept="image/png,image/jpeg,image/webp" data-category="block_wood" style="display:none;">
+                <div class="tp-empty">📤 Wood</div>
+                <div class="tp-preview" style="display:none;"><img src="" alt=""></div>
+              </div>
+              <div class="tp-dropzone" data-category="block_metal">
+                <input type="file" class="tp-texture-input" accept="image/png,image/jpeg,image/webp" data-category="block_metal" style="display:none;">
+                <div class="tp-empty">📤 Metal</div>
+                <div class="tp-preview" style="display:none;"><img src="" alt=""></div>
+              </div>
+              <div class="tp-dropzone" data-category="block_glass">
+                <input type="file" class="tp-texture-input" accept="image/png,image/jpeg,image/webp" data-category="block_glass" style="display:none;">
+                <div class="tp-empty">📤 Glass</div>
+                <div class="tp-preview" style="display:none;"><img src="" alt=""></div>
+              </div>
+            </div>
+
+            <!-- ITEMS -->
+            <div class="tp-category">
+              <h5>⚔️ Items</h5>
+              <div class="tp-dropzone" data-category="item_tool">
+                <input type="file" class="tp-texture-input" accept="image/png,image/jpeg,image/webp" data-category="item_tool" style="display:none;">
+                <div class="tp-empty">📤 Tools</div>
+                <div class="tp-preview" style="display:none;"><img src="" alt=""></div>
+              </div>
+              <div class="tp-dropzone" data-category="item_food">
+                <input type="file" class="tp-texture-input" accept="image/png,image/jpeg,image/webp" data-category="item_food" style="display:none;">
+                <div class="tp-empty">📤 Food</div>
+                <div class="tp-preview" style="display:none;"><img src="" alt=""></div>
+              </div>
+            </div>
+
+            <!-- WATER & LAVA -->
+            <div class="tp-category">
+              <h5>💧 Water & Lava</h5>
+              <div class="tp-dropzone" data-category="water">
+                <input type="file" class="tp-texture-input" accept="image/png,image/jpeg,image/webp" data-category="water" style="display:none;">
+                <div class="tp-empty">📤 Water</div>
+                <div class="tp-preview" style="display:none;"><img src="" alt=""></div>
+              </div>
+              <div class="tp-dropzone" data-category="lava">
+                <input type="file" class="tp-texture-input" accept="image/png,image/jpeg,image/webp" data-category="lava" style="display:none;">
+                <div class="tp-empty">📤 Lava</div>
+                <div class="tp-preview" style="display:none;"><img src="" alt=""></div>
+              </div>
+            </div>
+
+            <!-- ENTITIES -->
+            <div class="tp-category">
+              <h5>👾 Entities</h5>
+              <div class="tp-dropzone" data-category="entity_player">
+                <input type="file" class="tp-texture-input" accept="image/png,image/jpeg,image/webp" data-category="entity_player" style="display:none;">
+                <div class="tp-empty">📤 Player</div>
+                <div class="tp-preview" style="display:none;"><img src="" alt=""></div>
+              </div>
+              <div class="tp-dropzone" data-category="entity_mob">
+                <input type="file" class="tp-texture-input" accept="image/png,image/jpeg,image/webp" data-category="entity_mob" style="display:none;">
+                <div class="tp-empty">📤 Mobs</div>
+                <div class="tp-preview" style="display:none;"><img src="" alt=""></div>
+              </div>
+            </div>
+
+            <!-- PARTICLES -->
+            <div class="tp-category">
+              <h5>✨ Particles & Effects</h5>
+              <div class="tp-dropzone" data-category="particle_generic">
+                <input type="file" class="tp-texture-input" accept="image/png,image/jpeg,image/webp" data-category="particle_generic" style="display:none;">
+                <div class="tp-empty">📤 Particles</div>
+                <div class="tp-preview" style="display:none;"><img src="" alt=""></div>
+              </div>
+            </div>
+          </div>
+
+          <div class="hint" style="margin-top:16px;">PNG recommended · Any size · All textures will be embedded in the .texls file</div>
+        </div>
+      </div>
       <div class="lf-ws-entry-footer" id="wsEntryFooter" style="display:none;">
         <button class="lf-btn lf-btn-danger lf-btn-sm" id="wsDeleteEntryBtn">🗑 Delete Entry</button>
         <div style="flex:1;"></div>
@@ -2830,6 +3152,7 @@ a:focus-visible, button:focus-visible, input:focus-visible, textarea:focus-visib
     document.getElementById("wsFormBlockItem").style.display = "none";
     document.getElementById("wsFormEntity").style.display = "none";
     document.getElementById("wsFormScript").style.display = "none";
+    document.getElementById("wsFormTexturePack").style.display = "none";
 
     if (entry.kind === "block" || entry.kind === "item") {
       renderBlockItemForm(entry);
@@ -2840,6 +3163,9 @@ a:focus-visible, button:focus-visible, input:focus-visible, textarea:focus-visib
     } else if (entry.kind === "script") {
       renderScriptForm(entry);
       document.getElementById("wsFormScript").style.display = "flex";
+    } else if (entry.kind === "texture_pack") {
+      renderTexturePackForm(entry);
+      document.getElementById("wsFormTexturePack").style.display = "block";
     }
     renderSidebar();
   }
@@ -2899,16 +3225,27 @@ a:focus-visible, button:focus-visible, input:focus-visible, textarea:focus-visib
     document.getElementById("fBlockDropField").style.display = entry.kind === "block" ? "block" : "none";
     document.getElementById("fItemOnlyFields").style.display = entry.kind === "item" ? "block" : "none";
 
-    // texture
-    if (entry.textureDataURL) {
-      document.getElementById("fTexturePreviewImg").src = entry.textureDataURL;
-      document.getElementById("fTextureFileName").textContent = entry.textureFileName || "texture.png";
-      document.getElementById("fDropzoneEmpty").style.display = "none";
-      document.getElementById("fDropzoneFilled").style.display = "block";
-    } else {
-      document.getElementById("fDropzoneEmpty").style.display = "block";
-      document.getElementById("fDropzoneFilled").style.display = "none";
-    }
+    // 6 FACE TEXTURES
+    const BLOCK_FACES = ["top", "bottom", "side1", "side2", "side3", "side4"];
+    if (!entry.blockFaceTextures) entry.blockFaceTextures = {};
+    
+    BLOCK_FACES.forEach(function (face) {
+      const dropzone = document.getElementById("fTexture_" + face);
+      if (!dropzone) return;
+      
+      const empty = dropzone.querySelector(".face-dropzone-empty");
+      const filled = dropzone.querySelector(".face-dropzone-filled");
+      const preview = dropzone.querySelector(".face-texture-preview img");
+      
+      if (entry.blockFaceTextures[face]) {
+        if (preview) preview.src = entry.blockFaceTextures[face];
+        if (empty) empty.style.display = "none";
+        if (filled) filled.style.display = "block";
+      } else {
+        if (empty) empty.style.display = "block";
+        if (filled) filled.style.display = "none";
+      }
+    });
 
     // recipe
     document.getElementById("fRecipeEnabled").checked = entry.recipeEnabled;
@@ -2985,40 +3322,91 @@ a:focus-visible, button:focus-visible, input:focus-visible, textarea:focus-visib
     markEntryUnsaved(entry);
   });
 
-  const fTextureDropzone = document.getElementById("fTextureDropzone");
-  fTextureDropzone.addEventListener("click", function () { document.getElementById("fTextureFileInput").click(); });
-  document.getElementById("fTextureFileInput").addEventListener("change", function (e) {
-    const file = e.target.files[0];
-    handleTextureFile(file, function (dataURL, fileName) {
+  // ── 6 FACE TEXTURE SYSTEM ─────────────────────────────────────
+  // Her face için dropzone ve event listener
+  const BLOCK_FACES = ["top", "bottom", "side1", "side2", "side3", "side4"];
+  
+  BLOCK_FACES.forEach(function (face) {
+    const dropzone = document.getElementById("fTexture_" + face);
+    const input = dropzone.querySelector(".face-texture-input");
+    
+    if (!dropzone || !input) return;
+    
+    dropzone.addEventListener("click", function (e) {
+      if (!e.target.closest(".face-remove-btn")) {
+        input.click();
+      }
+    });
+    
+    // Drag & drop
+    dropzone.addEventListener("dragover", function (e) {
+      e.preventDefault();
+      dropzone.style.borderColor = "var(--lens-cyan)";
+      dropzone.style.background = "rgba(0,242,254,0.1)";
+    });
+    dropzone.addEventListener("dragleave", function () {
+      dropzone.style.borderColor = "";
+      dropzone.style.background = "";
+    });
+    dropzone.addEventListener("drop", function (e) {
+      e.preventDefault();
+      dropzone.style.borderColor = "";
+      dropzone.style.background = "";
+      const file = e.dataTransfer.files[0];
+      if (file) handleFaceTextureFile(file, face);
+    });
+    
+    input.addEventListener("change", function (e) {
+      const file = e.target.files[0];
+      if (file) handleFaceTextureFile(file, face);
+    });
+    
+    dropzone.querySelector(".face-remove-btn").addEventListener("click", function (e) {
+      e.stopPropagation();
       const entry = entryById(selectedLocalId);
       if (!entry) return;
-      entry.textureDataURL = dataURL;
-      entry.textureFileName = fileName;
+      if (!entry.blockFaceTextures) entry.blockFaceTextures = {};
+      entry.blockFaceTextures[face] = null;
+      input.value = "";
       renderBlockItemForm(entry);
       markEntryUnsaved(entry);
     });
   });
-  document.getElementById("fTextureRemoveBtn").addEventListener("click", function (e) {
-    e.stopPropagation();
-    const entry = entryById(selectedLocalId);
-    if (!entry) return;
-    entry.textureDataURL = null;
-    entry.textureFileName = null;
-    document.getElementById("fTextureFileInput").value = "";
-    renderBlockItemForm(entry);
-    markEntryUnsaved(entry);
-  });
-
-  function handleTextureFile(file, cb) {
+  
+  function handleFaceTextureFile(file, face) {
     if (!file) return;
     if (!file.type.match(/^image\/(png|jpeg|webp)$/)) {
-      window.LF.toast("Please upload a PNG, JPEG, or WEBP image.", "error"); return;
+      window.LF.toast("Please upload a PNG, JPEG, or WEBP image.", "error");
+      return;
     }
     if (file.size > 1024 * 1024) {
-      window.LF.toast("Texture must be under 1MB.", "warn"); return;
+      window.LF.toast("Texture must be under 1MB.", "warn");
+      return;
     }
+    
     const reader = new FileReader();
-    reader.onload = function (e) { cb(e.target.result, file.name); };
+    reader.onload = function (e) {
+      const entry = entryById(selectedLocalId);
+      if (!entry) return;
+      if (!entry.blockFaceTextures) entry.blockFaceTextures = {};
+      
+      // Base64 olarak kaydet
+      entry.blockFaceTextures[face] = e.target.result;
+      
+      // UI güncelle
+      const dropzone = document.getElementById("fTexture_" + face);
+      const preview = dropzone.querySelector(".face-texture-preview img");
+      const empty = dropzone.querySelector(".face-dropzone-empty");
+      const filled = dropzone.querySelector(".face-dropzone-filled");
+      
+      if (preview) preview.src = e.target.result;
+      if (empty) empty.style.display = "none";
+      if (filled) filled.style.display = "block";
+      
+      renderBlockItemForm(entry);
+      markEntryUnsaved(entry);
+      window.LF.toast("Texture " + face + " uploaded!", "ok");
+    };
     reader.readAsDataURL(file);
   }
 
@@ -3159,7 +3547,116 @@ a:focus-visible, button:focus-visible, input:focus-visible, textarea:focus-visib
     }
   }
 
-  document.getElementById("sEntryName").addEventListener("input", function () {
+  // ── TEXTURE PACK FORM ──────────────────────────────────────────
+  function renderTexturePackForm(entry) {
+    if (!entry.textures) entry.textures = {};
+    
+    document.getElementById("tpEntryName").value = entry.name;
+    document.getElementById("tpEntryDesc").value = entry.description;
+    document.getElementById("tpVersion").value = entry.version || "1.0.0";
+    document.getElementById("tpIdPreview").textContent = computeId(entry);
+    
+    // Texture dropzone'ları render et
+    const categories = ["sky", "sun", "moon", "ui_inventory", "ui_hotbar", "terrain_grass", "terrain_dirt", "terrain_stone", "block_wood", "block_metal", "block_glass", "item_tool", "item_food", "water", "lava", "entity_player", "entity_mob", "particle_generic"];
+    
+    categories.forEach(function (cat) {
+      const dropzone = document.querySelector('.tp-dropzone[data-category="' + cat + '"]');
+      if (!dropzone) return;
+      
+      const input = dropzone.querySelector('.tp-texture-input');
+      const empty = dropzone.querySelector('.tp-empty');
+      const preview = dropzone.querySelector('.tp-preview');
+      const previewImg = preview ? preview.querySelector('img') : null;
+      
+      // Set input click handler
+      dropzone.addEventListener('click', function (e) {
+        if (e.target.closest('.tp-remove-btn')) return;
+        input.click();
+      });
+      
+      // Drag & drop
+      dropzone.addEventListener('dragover', function (e) {
+        e.preventDefault();
+        dropzone.classList.add('dragover');
+      });
+      dropzone.addEventListener('dragleave', function () {
+        dropzone.classList.remove('dragover');
+      });
+      dropzone.addEventListener('drop', function (e) {
+        e.preventDefault();
+        dropzone.classList.remove('dragover');
+        const file = e.dataTransfer.files[0];
+        if (file) handleTexturePackUpload(file, cat);
+      });
+      
+      // File input change
+      input.addEventListener('change', function (e) {
+        const file = e.target.files[0];
+        if (file) handleTexturePackUpload(file, cat);
+      });
+      
+      // Show preview if exists
+      if (entry.textures[cat]) {
+        if (previewImg) previewImg.src = entry.textures[cat];
+        if (empty) empty.style.display = 'none';
+        if (preview) preview.style.display = 'block';
+      } else {
+        if (empty) empty.style.display = 'block';
+        if (preview) preview.style.display = 'none';
+      }
+    });
+  }
+  
+  function handleTexturePackUpload(file, category) {
+    if (!file) return;
+    if (!file.type.match(/^image\/(png|jpeg|webp)$/)) {
+      window.LF.toast("Please upload a PNG, JPEG, or WEBP image.", "error");
+      return;
+    }
+    
+    const reader = new FileReader();
+    reader.onload = function (e) {
+      const entry = entryById(selectedLocalId);
+      if (!entry) return;
+      if (!entry.textures) entry.textures = {};
+      
+      // Base64 olarak kaydet
+      entry.textures[category] = e.target.result;
+      
+      // UI güncelle
+      const dropzone = document.querySelector('.tp-dropzone[data-category="' + category + '"]');
+      if (dropzone) {
+        const empty = dropzone.querySelector('.tp-empty');
+        const preview = dropzone.querySelector('.tp-preview');
+        const previewImg = preview ? preview.querySelector('img') : null;
+        
+        if (previewImg) previewImg.src = e.target.result;
+        if (empty) empty.style.display = 'none';
+        if (preview) preview.style.display = 'block';
+      }
+      
+      markEntryUnsaved(entry);
+      window.LF.toast("Texture '" + category + "' uploaded!", "ok");
+    };
+    reader.readAsDataURL(file);
+  }
+  
+  // Texture Pack form input listeners
+  ['tpEntryName', 'tpEntryDesc', 'tpVersion'].forEach(function (id) {
+    const el = document.getElementById(id);
+    if (el) {
+      el.addEventListener('input', function () {
+        const entry = entryById(selectedLocalId);
+        if (!entry) return;
+        entry.name = document.getElementById('tpEntryName').value.trim();
+        entry.description = document.getElementById('tpEntryDesc').value.trim();
+        entry.version = document.getElementById('tpVersion').value.trim() || "1.0.0";
+        document.getElementById('tpIdPreview').textContent = computeId(entry);
+        markEntryUnsaved(entry);
+        renderSidebar();
+      });
+    }
+  });
     const entry = entryById(selectedLocalId);
     if (!entry) return;
     entry.name = document.getElementById("sEntryName").value.trim();
@@ -3194,9 +3691,11 @@ a:focus-visible, button:focus-visible, input:focus-visible, textarea:focus-visib
         displayName: entry.name,
         category: entry.category,
         description: entry.description,
-        texture: entry.textureDataURL
-          ? { mode: "upload", data: entry.textureDataURL, fileName: entry.textureFileName }
-          : { mode: "none" }
+        texture: entry.blockFaceTextures && Object.keys(entry.blockFaceTextures).some(function(f) { return entry.blockFaceTextures[f]; })
+          ? { mode: "faces", faces: entry.blockFaceTextures }
+          : (entry.textureDataURL
+            ? { mode: "upload", data: entry.textureDataURL, fileName: entry.textureFileName }
+            : { mode: "none" })
       };
       if (entry.kind === "block") {
         out.hardness = entry.hardness === "" ? null : parseFloat(entry.hardness);
@@ -3235,6 +3734,16 @@ a:focus-visible, button:focus-visible, input:focus-visible, textarea:focus-visib
         displayName: entry.name,
         event: entry.event,
         code: entry.code
+      };
+    }
+    if (entry.kind === "texture_pack") {
+      return {
+        id: computeId(entry),
+        kind: "texture_pack",
+        displayName: entry.name,
+        description: entry.description,
+        version: entry.version || "1.0.0",
+        textures: entry.textures || {}
       };
     }
     return null;
@@ -3459,9 +3968,11 @@ a:focus-visible, button:focus-visible, input:focus-visible, textarea:focus-visib
           '<div class="m">' + (mod.category || "other") + ' · Updated ' + window.LF.timeAgo(mod.updatedAt || mod.createdAt) + ' · ⬇ ' + window.LF.fmtCount(mod.downloads) + '</div>' +
         '</div>' +
         '<div class="actions">' +
+          '<button class="lf-btn lf-btn-sm lf-btn-primary edit-mod-btn" data-mod-id="' + mod.id + '">✏️ Edit</button>' +
           (mod.status === "published" ? '<a href="/' + window.LF.escapeHTML(mod.slug || mod.id) + '" class="lf-btn lf-btn-sm lf-btn-ghost">View</a>' : '') +
           (mod.status === "draft" ? '<button class="lf-btn lf-btn-sm lf-btn-primary publish-mod-btn" data-mod-id="' + mod.id + '" data-mod-name="' + window.LF.escapeHTML(mod.name) + '">🚀 Publish</button>' : '') +
-          '<button class="lf-btn lf-btn-sm lf-btn-danger delete-mod-btn" data-mod-id="' + mod.id + '">🗑</button>' +
+          (mod.status === "published" ? '<button class="lf-btn lf-btn-sm lf-btn-ghost unpublish-mod-btn" data-mod-id="' + mod.id + '">🔒 Unpublish</button>' : '') +
+          '<button class="lf-btn lf-btn-sm lf-btn-danger delete-mod-btn" data-mod-id="' + mod.id + '">🗑 Delete</button>' +
         '</div>' +
       '</div>'
     );
@@ -3476,9 +3987,54 @@ a:focus-visible, button:focus-visible, input:focus-visible, textarea:focus-visib
     }
     container.innerHTML = list.map(rowHTML).join("");
 
+    // ── EDIT BUTONU ──────────────────────────────────────────────
+    container.querySelectorAll(".edit-mod-btn").forEach(function (btn) {
+      btn.addEventListener("click", function () {
+        const modId = btn.dataset.modId;
+        const mod = myModsCache.find(function (m) { return m.id === modId; });
+        if (!mod) {
+          window.LF.toast("Mod not found.", "error");
+          return;
+        }
+        
+        // Mod'u Firebase'den yükle ve editor'da aç
+        if (typeof window.LF.loadModForEditing === "function") {
+          window.LF.loadModForEditing(modId);
+        } else if (typeof window.LF.editMod === "function") {
+          window.LF.editMod(modId, mod);
+        }
+        
+        // Editor'a git
+        window.LF.navigate("/createmod");
+        if (typeof window.LF.openEditor === "function") {
+          window.LF.openEditor();
+        }
+      });
+    });
+
     container.querySelectorAll(".publish-mod-btn").forEach(function (btn) {
       btn.addEventListener("click", function () { window.LF.openPublishModal(btn.dataset.modId, btn.dataset.modName); });
     });
+
+    // ── UNPUBLISH BUTONU (Published → Draft) ──────────────────────
+    container.querySelectorAll(".unpublish-mod-btn").forEach(function (btn) {
+      btn.addEventListener("click", function () {
+        if (!confirm("Unpublish this mod? It will no longer be visible publicly, but you can re-publish it later.")) return;
+        
+        const modId = btn.dataset.modId;
+        window.LF.db.collection("mods").doc(modId).update({
+          status: "draft",
+          updatedAt: new Date()
+        }).then(function () {
+          window.LF.toast("Mod unpublished.", "ok");
+          fetchMyMods();
+        }).catch(function (err) {
+          window.LF.toast("Couldn't unpublish: " + err.message, "error");
+        });
+      });
+    });
+
+    // ── DELETE BUTONU (Tamamen sil) ──────────────────────────────
     container.querySelectorAll(".delete-mod-btn").forEach(function (btn) {
       btn.addEventListener("click", function () {
         if (!confirm("Delete this mod permanently? This cannot be undone.")) return;
